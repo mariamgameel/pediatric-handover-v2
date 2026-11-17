@@ -4,40 +4,48 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
-use App\Models\Admin;
 use App\Models\Doctor;
 
 class DoctorPolicy
 {
     /**
-     * Determine whether the user can view any doctors.
+     * Determine whether the doctor can view any doctors.
      */
-    public function viewAny(Doctor|Admin $user): bool
+    public function viewAny(Doctor $user): bool
     {
-        return $user instanceof Admin;
+        return $user->isAdmin();
     }
 
     /**
-     * Determine whether the user can view the doctor.
+     * Determine whether the doctor can view the doctor.
      */
-    public function view(Doctor|Admin $user, ?Doctor $doctor = null): bool
+    public function view(Doctor $user, ?Doctor $doctor = null): bool
     {
-        return $user instanceof Admin;
+        return $user->isAdmin();
     }
 
     /**
-     * Determine whether the user can delete the doctor.
+     * Determine whether the doctor can delete the doctor.
+     * An admin cannot delete their own doctor account.
      */
-    public function delete(Doctor|Admin $user, ?Doctor $doctor = null): bool
+    public function delete(Doctor $user, ?Doctor $doctor = null): bool
     {
-        return $user instanceof Admin;
+        if (!$user->isAdmin()) {
+            return false;
+        }
+
+        if ($doctor !== null && $user->doctor_id === $doctor->doctor_id) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
-     * Determine whether the user can restore the doctor.
+     * Determine whether the doctor can restore the doctor.
      */
-    public function restore(Doctor|Admin $user, ?Doctor $doctor = null): bool
+    public function restore(Doctor $user, ?Doctor $doctor = null): bool
     {
-        return $user instanceof Admin;
+        return $user->isAdmin();
     }
 }

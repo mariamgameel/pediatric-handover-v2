@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Http\Middleware\EnsureAdminIsActive;
 use App\Http\Middleware\EnsureDoctorIsActive;
+use App\Http\Middleware\EnsureDoctorIsAdmin;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -16,21 +16,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->redirectGuestsTo(function (Request $request): string {
-            return $request->is('admin*') ? route('admin.login') : route('login');
-        });
+        $middleware->redirectGuestsTo(fn (): string => route('login'));
 
-        $middleware->redirectUsersTo(function (Request $request): string {
-            if (auth('admin')->check()) {
-                return route('admin.dashboard');
-            }
-
-            return route('dashboard');
-        });
+        $middleware->redirectUsersTo(fn (): string => route('dashboard'));
 
         $middleware->alias([
             'doctor.active' => EnsureDoctorIsActive::class,
-            'admin.active' => EnsureAdminIsActive::class,
+            'admin' => EnsureDoctorIsAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

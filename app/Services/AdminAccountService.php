@@ -4,13 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Exceptions\CannotDeleteAdminException;
-use App\Models\Admin;
 use App\Models\ClinicalUpdate;
 use App\Models\Doctor;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\DB;
 
 class AdminAccountService
 {
@@ -91,47 +87,5 @@ class AdminAccountService
     public function restoreDoctor(Doctor $doctor): void
     {
         $doctor->restore();
-    }
-
-    /**
-     * List all administrators, including soft-deleted ones.
-     *
-     * @return Collection<int, Admin>
-     */
-    public function listAdmins(): Collection
-    {
-        return Admin::withTrashed()->orderBy('admin_id', 'asc')->get();
-    }
-
-    /**
-     * Soft delete another administrator account safely.
-     *
-     * @throws CannotDeleteAdminException
-     */
-    public function deleteAdmin(Admin $currentAdmin, Admin $targetAdmin): void
-    {
-        if ($currentAdmin->admin_id === $targetAdmin->admin_id) {
-            throw new CannotDeleteAdminException('An administrator cannot delete their own account.');
-        }
-
-        DB::transaction(function () use ($targetAdmin): void {
-            // Lock active admins to prevent concurrent mutual-deletion races
-            $activeAdminCount = Admin::whereNull('deleted_at')->lockForUpdate()->count();
-
-            if ($activeAdminCount <= 1) {
-                throw new CannotDeleteAdminException('Cannot delete the last remaining active administrator.');
-            }
-
-            $adminToDelete = Admin::where('admin_id', $targetAdmin->admin_id)
-                ->whereNull('deleted_at')
-                ->lockForUpdate()
-                ->first();
-
-            if ($adminToDelete === null) {
-                throw new CannotDeleteAdminException('Administrator is already deleted or not found.');
-            }
-
-            $adminToDelete->delete();
-        });
     }
 }

@@ -64,6 +64,7 @@ class Doctor extends Authenticatable
         return [
             'password' => 'hashed',
             'last_login_at' => 'datetime',
+            'is_admin' => 'boolean',
         ];
     }
 
@@ -96,5 +97,23 @@ class Doctor extends Authenticatable
                 ? "{$this->full_name} (deleted)"
                 : (string) $this->full_name,
         );
+    }
+
+    /**
+     * Determine whether the doctor has administrator privileges.
+     */
+    public function isAdmin(): bool
+    {
+        return (bool) $this->is_admin;
+    }
+
+    /**
+     * Explicitly grant administrator privileges to the doctor.
+     */
+    public function makeAdmin(): self
+    {
+        $this->forceFill(['is_admin' => true])->save();
+
+        return $this;
     }
 }

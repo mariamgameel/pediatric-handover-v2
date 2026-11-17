@@ -28,22 +28,6 @@ class RateLimitingTest extends TestCase
         $response->assertStatus(429);
     }
 
-    public function test_admin_login_is_rate_limited_after_5_attempts(): void
-    {
-        $payload = [
-            'email' => 'ratelimit.admin@hospital.local',
-            'password' => 'WrongPassword!',
-        ];
-
-        for ($i = 0; $i < 5; $i++) {
-            $response = $this->post('/admin/login', $payload);
-            $response->assertStatus(302);
-        }
-
-        // 6th attempt should be blocked by throttle
-        $response = $this->post('/admin/login', $payload);
-        $response->assertStatus(429);
-    }
 
     public function test_doctor_registration_is_rate_limited_after_5_attempts(): void
     {

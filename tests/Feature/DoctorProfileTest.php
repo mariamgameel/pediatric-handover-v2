@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Models\Admin;
 use App\Models\Doctor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -20,13 +19,12 @@ class DoctorProfileTest extends TestCase
         $this->patch('/profile', ['full_name' => 'Attempted Edit'])->assertRedirect('/login');
     }
 
-    public function test_admin_session_cannot_access_profile_routes(): void
+    public function test_admin_doctor_can_access_profile_routes(): void
     {
-        $admin = Admin::factory()->create();
+        $admin = Doctor::factory()->admin()->create();
 
-        $this->actingAs($admin, 'admin')->get('/profile')->assertRedirect('/login');
-        $this->actingAs($admin, 'admin')->get('/profile/edit')->assertRedirect('/login');
-        $this->actingAs($admin, 'admin')->patch('/profile', ['full_name' => 'Attempted Edit'])->assertRedirect('/login');
+        $this->actingAs($admin, 'doctor')->get('/profile')->assertOk();
+        $this->actingAs($admin, 'doctor')->get('/profile/edit')->assertOk();
     }
 
     public function test_doctor_can_view_own_profile_without_exposing_sensitive_fields(): void

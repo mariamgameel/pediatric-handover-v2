@@ -20,7 +20,7 @@ class DoctorController extends Controller
      */
     public function index(Request $request, AdminAccountService $service): View
     {
-        $admin = auth('admin')->user();
+        $admin = auth('doctor')->user();
         Gate::forUser($admin)->authorize('viewAny', Doctor::class);
 
         $doctors = $service->paginateDoctors($request->only([
@@ -42,7 +42,7 @@ class DoctorController extends Controller
     {
         $doctor = $service->getDoctor($doctor_id);
 
-        $admin = auth('admin')->user();
+        $admin = auth('doctor')->user();
         Gate::forUser($admin)->authorize('view', $doctor);
 
         $clinicalUpdates = $service->getDoctorClinicalUpdates($doctor);
@@ -61,7 +61,7 @@ class DoctorController extends Controller
     {
         $doctor = $service->getDoctor($doctor_id);
 
-        $admin = auth('admin')->user();
+        $admin = auth('doctor')->user();
         Gate::forUser($admin)->authorize('delete', $doctor);
 
         $service->deleteDoctor($doctor);
@@ -77,7 +77,7 @@ class DoctorController extends Controller
     {
         $doctor = $service->getDoctor($doctor_id);
 
-        $admin = auth('admin')->user();
+        $admin = auth('doctor')->user();
         Gate::forUser($admin)->authorize('restore', $doctor);
 
         $service->restoreDoctor($doctor);

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Policies;
 
-use App\Models\Admin;
 use App\Models\Doctor;
 use App\Models\Patient;
 use App\Policies\PatientPolicy;
@@ -20,9 +19,10 @@ class PatientPolicyTest extends TestCase
         $this->policy = new PatientPolicy();
     }
 
-    public function test_doctor_has_read_only_access_to_patients(): void
+    public function test_non_admin_doctor_has_read_only_access_to_patients(): void
     {
         $doctor = new Doctor();
+        $doctor->is_admin = false;
         $patient = new Patient();
 
         $this->assertTrue($this->policy->viewAny($doctor));
@@ -32,9 +32,10 @@ class PatientPolicyTest extends TestCase
         $this->assertFalse($this->policy->delete($doctor, $patient));
     }
 
-    public function test_admin_has_full_management_access_to_patients(): void
+    public function test_admin_doctor_has_full_management_access_to_patients(): void
     {
-        $admin = new Admin();
+        $admin = new Doctor();
+        $admin->is_admin = true;
         $patient = new Patient();
 
         $this->assertTrue($this->policy->viewAny($admin));

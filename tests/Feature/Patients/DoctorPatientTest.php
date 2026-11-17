@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Patients;
 
-use App\Models\Admin;
 use App\Models\Doctor;
 use App\Models\Patient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -138,13 +137,13 @@ class DoctorPatientTest extends TestCase
         $doctor = Doctor::factory()->create();
         $patient = Patient::factory()->create();
 
-        $this->actingAs($doctor, 'doctor')->get('/admin/patients')->assertRedirect('/admin/login');
-        $this->actingAs($doctor, 'doctor')->get('/admin/patients/create')->assertRedirect('/admin/login');
-        $this->actingAs($doctor, 'doctor')->post('/admin/patients', [])->assertRedirect('/admin/login');
-        $this->actingAs($doctor, 'doctor')->get("/admin/patients/{$patient->patient_id}")->assertRedirect('/admin/login');
-        $this->actingAs($doctor, 'doctor')->get("/admin/patients/{$patient->patient_id}/edit")->assertRedirect('/admin/login');
-        $this->actingAs($doctor, 'doctor')->put("/admin/patients/{$patient->patient_id}", [])->assertRedirect('/admin/login');
-        $this->actingAs($doctor, 'doctor')->delete("/admin/patients/{$patient->patient_id}")->assertRedirect('/admin/login');
+        $this->actingAs($doctor, 'doctor')->get('/admin/patients')->assertForbidden();
+        $this->actingAs($doctor, 'doctor')->get('/admin/patients/create')->assertForbidden();
+        $this->actingAs($doctor, 'doctor')->post('/admin/patients', [])->assertForbidden();
+        $this->actingAs($doctor, 'doctor')->get("/admin/patients/{$patient->patient_id}")->assertForbidden();
+        $this->actingAs($doctor, 'doctor')->get("/admin/patients/{$patient->patient_id}/edit")->assertForbidden();
+        $this->actingAs($doctor, 'doctor')->put("/admin/patients/{$patient->patient_id}", [])->assertForbidden();
+        $this->actingAs($doctor, 'doctor')->delete("/admin/patients/{$patient->patient_id}")->assertForbidden();
     }
 
     public function test_doctor_has_no_create_edit_or_delete_routes_for_patients(): void
@@ -193,7 +192,7 @@ class DoctorPatientTest extends TestCase
     public function test_doctor_calling_all_seven_admin_patient_endpoints_is_denied_while_admin_is_allowed(): void
     {
         $doctor = Doctor::factory()->create();
-        $admin = Admin::factory()->create();
+        $admin = Doctor::factory()->admin()->create();
         $patient = Patient::factory()->create([
             'patient_id' => 'PAT-SEVEN-01',
         ]);
@@ -211,22 +210,22 @@ class DoctorPatientTest extends TestCase
         ];
         $deletePayload = ['confirm_delete' => '1'];
 
-        // --- Doctor under 'doctor' guard is denied on all 7 admin patient endpoints ---
-        $this->actingAs($doctor, 'doctor')->get('/admin/patients')->assertRedirect('/admin/login');
-        $this->actingAs($doctor, 'doctor')->get('/admin/patients/create')->assertRedirect('/admin/login');
-        $this->actingAs($doctor, 'doctor')->post('/admin/patients', $storePayload)->assertRedirect('/admin/login');
-        $this->actingAs($doctor, 'doctor')->get("/admin/patients/{$patient->patient_id}")->assertRedirect('/admin/login');
-        $this->actingAs($doctor, 'doctor')->get("/admin/patients/{$patient->patient_id}/edit")->assertRedirect('/admin/login');
-        $this->actingAs($doctor, 'doctor')->put("/admin/patients/{$patient->patient_id}", $updatePayload)->assertRedirect('/admin/login');
-        $this->actingAs($doctor, 'doctor')->delete("/admin/patients/{$patient->patient_id}", $deletePayload)->assertRedirect('/admin/login');
+        // --- Non-admin doctor is forbidden on all 7 admin patient endpoints ---
+        $this->actingAs($doctor, 'doctor')->get('/admin/patients')->assertForbidden();
+        $this->actingAs($doctor, 'doctor')->get('/admin/patients/create')->assertForbidden();
+        $this->actingAs($doctor, 'doctor')->post('/admin/patients', $storePayload)->assertForbidden();
+        $this->actingAs($doctor, 'doctor')->get("/admin/patients/{$patient->patient_id}")->assertForbidden();
+        $this->actingAs($doctor, 'doctor')->get("/admin/patients/{$patient->patient_id}/edit")->assertForbidden();
+        $this->actingAs($doctor, 'doctor')->put("/admin/patients/{$patient->patient_id}", $updatePayload)->assertForbidden();
+        $this->actingAs($doctor, 'doctor')->delete("/admin/patients/{$patient->patient_id}", $deletePayload)->assertForbidden();
 
-        // --- Admin under 'admin' guard is allowed on all 7 endpoints ---
-        $this->actingAs($admin, 'admin')->get('/admin/patients')->assertOk();
-        $this->actingAs($admin, 'admin')->get('/admin/patients/create')->assertOk();
-        $this->actingAs($admin, 'admin')->post('/admin/patients', $storePayload)->assertRedirect('/admin/patients/PAT-SEVEN-NEW');
-        $this->actingAs($admin, 'admin')->get("/admin/patients/{$patient->patient_id}")->assertOk();
-        $this->actingAs($admin, 'admin')->get("/admin/patients/{$patient->patient_id}/edit")->assertOk();
-        $this->actingAs($admin, 'admin')->put("/admin/patients/{$patient->patient_id}", $updatePayload)->assertRedirect("/admin/patients/{$patient->patient_id}");
-        $this->actingAs($admin, 'admin')->delete("/admin/patients/{$patient->patient_id}", $deletePayload)->assertRedirect('/admin/patients');
+        // --- Admin doctor under 'doctor' guard is allowed on all 7 endpoints ---
+        $this->actingAs($admin, 'doctor')->get('/admin/patients')->assertOk();
+        $this->actingAs($admin, 'doctor')->get('/admin/patients/create')->assertOk();
+        $this->actingAs($admin, 'doctor')->post('/admin/patients', $storePayload)->assertRedirect('/admin/patients/PAT-SEVEN-NEW');
+        $this->actingAs($admin, 'doctor')->get("/admin/patients/{$patient->patient_id}")->assertOk();
+        $this->actingAs($admin, 'doctor')->get("/admin/patients/{$patient->patient_id}/edit")->assertOk();
+        $this->actingAs($admin, 'doctor')->put("/admin/patients/{$patient->patient_id}", $updatePayload)->assertRedirect("/admin/patients/{$patient->patient_id}");
+        $this->actingAs($admin, 'doctor')->delete("/admin/patients/{$patient->patient_id}", $deletePayload)->assertRedirect('/admin/patients');
     }
 }

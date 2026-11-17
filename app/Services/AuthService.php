@@ -66,40 +66,4 @@ class AuthService
         $request->session()->invalidate();
         $request->session()->regenerateToken();
     }
-
-    /**
-     * Authenticate an administrator using email and password.
-     */
-    public function loginAdmin(string $email, string $password, Request $request): bool
-    {
-        $credentials = [
-            'email' => $email,
-            'password' => $password,
-        ];
-
-        if (!auth('admin')->attempt($credentials)) {
-            return false;
-        }
-
-        $admin = auth('admin')->user();
-        if ($admin === null || $admin->trashed()) {
-            auth('admin')->logout();
-            return false;
-        }
-
-        $admin->update(['last_login_at' => now()]);
-        $request->session()->regenerate();
-
-        return true;
-    }
-
-    /**
-     * Log out the authenticated administrator.
-     */
-    public function logoutAdmin(Request $request): void
-    {
-        auth('admin')->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-    }
 }

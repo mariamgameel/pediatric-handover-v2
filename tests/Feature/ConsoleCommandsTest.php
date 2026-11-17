@@ -15,16 +15,19 @@ class ConsoleCommandsTest extends TestCase
     public function test_admin_create_command_interactively_creates_admin(): void
     {
         $this->artisan('admin:create')
+            ->expectsQuestion('Hospital Doctor ID', 'DOC-CMD-01')
             ->expectsQuestion('Full Name', 'Command Administrator')
             ->expectsQuestion('Email Address', 'cmd.admin@hospital.local')
             ->expectsQuestion('Password', 'adminsecret123')
             ->expectsQuestion('Confirm Password', 'adminsecret123')
-            ->expectsOutputToContain('created successfully')
+            ->expectsOutputToContain('created')
             ->assertSuccessful();
 
-        $this->assertDatabaseHas('admins', [
+        $this->assertDatabaseHas('doctors', [
+            'doctor_id' => 'DOC-CMD-01',
             'email' => 'cmd.admin@hospital.local',
             'full_name' => 'Command Administrator',
+            'is_admin' => 1,
         ]);
     }
 

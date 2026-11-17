@@ -47,6 +47,7 @@ class DoctorRegisterRequest extends FormRequest
             ],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
             'phone_number' => ['nullable', 'string', 'max:30'],
+            'is_admin' => ['prohibited'],
         ];
     }
 }

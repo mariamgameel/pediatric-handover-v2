@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Patients;
 
-use App\Models\Admin;
 use App\Models\ClinicalUpdate;
 use App\Models\Doctor;
 use App\Models\Patient;
@@ -16,16 +15,16 @@ class AdminPatientTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_unauthenticated_access_redirects_to_admin_login(): void
+    public function test_unauthenticated_access_redirects_to_login(): void
     {
-        $this->get('/admin/patients')->assertRedirect('/admin/login');
-        $this->get('/admin/patients/create')->assertRedirect('/admin/login');
-        $this->post('/admin/patients', [])->assertRedirect('/admin/login');
+        $this->get('/admin/patients')->assertRedirect('/login');
+        $this->get('/admin/patients/create')->assertRedirect('/login');
+        $this->post('/admin/patients', [])->assertRedirect('/login');
     }
 
     public function test_admin_can_view_patient_list_and_search(): void
     {
-        $admin = Admin::factory()->create();
+        $admin = Doctor::factory()->admin()->create();
 
         Patient::factory()->create([
             'patient_id' => 'PAT-ADMIN-01',
@@ -36,7 +35,7 @@ class AdminPatientTest extends TestCase
             'full_name' => 'Santino Corleone',
         ]);
 
-        $response = $this->actingAs($admin, 'admin')->get('/admin/patients?search=Michael');
+        $response = $this->actingAs($admin, 'doctor')->get('/admin/patients?search=Michael');
 
         $response->assertOk();
         $response->assertSee('Michael Corleone');
@@ -45,9 +44,9 @@ class AdminPatientTest extends TestCase
 
     public function test_admin_can_create_patient_with_valid_data(): void
     {
-        $admin = Admin::factory()->create();
+        $admin = Doctor::factory()->admin()->create();
 
-        $response = $this->actingAs($admin, 'admin')->post('/admin/patients', [
+        $response = $this->actingAs($admin, 'doctor')->post('/admin/patients', [
             'patient_id' => 'PAT-NEW-123',
             'full_name' => 'Tommy Vercetti',
             'date_of_birth' => '2018-05-12',
@@ -66,13 +65,13 @@ class AdminPatientTest extends TestCase
 
     public function test_create_fails_on_duplicate_patient_id(): void
     {
-        $admin = Admin::factory()->create();
+        $admin = Doctor::factory()->admin()->create();
 
         Patient::factory()->create([
             'patient_id' => 'PAT-DUP-ID',
         ]);
 
-        $response = $this->actingAs($admin, 'admin')->post('/admin/patients', [
+        $response = $this->actingAs($admin, 'doctor')->post('/admin/patients', [
             'patient_id' => 'PAT-DUP-ID',
             'full_name' => 'Another Patient',
             'date_of_birth' => '2019-01-01',
@@ -85,9 +84,9 @@ class AdminPatientTest extends TestCase
 
     public function test_create_fails_on_invalid_gender(): void
     {
-        $admin = Admin::factory()->create();
+        $admin = Doctor::factory()->admin()->create();
 
-        $response = $this->actingAs($admin, 'admin')->post('/admin/patients', [
+        $response = $this->actingAs($admin, 'doctor')->post('/admin/patients', [
             'patient_id' => 'PAT-GENDER-01',
             'full_name' => 'Invalid Gender Patient',
             'date_of_birth' => '2020-01-01',
@@ -100,9 +99,9 @@ class AdminPatientTest extends TestCase
 
     public function test_create_fails_on_future_date_of_birth(): void
     {
-        $admin = Admin::factory()->create();
+        $admin = Doctor::factory()->admin()->create();
 
-        $response = $this->actingAs($admin, 'admin')->post('/admin/patients', [
+        $response = $this->actingAs($admin, 'doctor')->post('/admin/patients', [
             'patient_id' => 'PAT-FUTURE-01',
             'full_name' => 'Time Traveler',
             'date_of_birth' => now()->addDays(5)->format('Y-m-d'),
@@ -115,9 +114,9 @@ class AdminPatientTest extends TestCase
 
     public function test_create_fails_on_date_of_birth_before_1900(): void
     {
-        $admin = Admin::factory()->create();
+        $admin = Doctor::factory()->admin()->create();
 
-        $response = $this->actingAs($admin, 'admin')->post('/admin/patients', [
+        $response = $this->actingAs($admin, 'doctor')->post('/admin/patients', [
             'patient_id' => 'PAT-ANCIENT-01',
             'full_name' => 'Ancient Patient',
             'date_of_birth' => '1899-12-31',
@@ -130,9 +129,9 @@ class AdminPatientTest extends TestCase
 
     public function test_create_fails_on_invalid_patient_id_pattern(): void
     {
-        $admin = Admin::factory()->create();
+        $admin = Doctor::factory()->admin()->create();
 
-        $response = $this->actingAs($admin, 'admin')->post('/admin/patients', [
+        $response = $this->actingAs($admin, 'doctor')->post('/admin/patients', [
             'patient_id' => 'PAT!@#$INVALID',
             'full_name' => 'Bad Pattern',
             'date_of_birth' => '2021-01-01',
@@ -145,7 +144,7 @@ class AdminPatientTest extends TestCase
 
     public function test_admin_can_edit_valid_patient_fields(): void
     {
-        $admin = Admin::factory()->create();
+        $admin = Doctor::factory()->admin()->create();
         $patient = Patient::factory()->create([
             'patient_id' => 'PAT-EDIT-01',
             'full_name' => 'Old Patient Name',
@@ -153,7 +152,7 @@ class AdminPatientTest extends TestCase
             'gender' => 'male',
         ]);
 
-        $response = $this->actingAs($admin, 'admin')->put("/admin/patients/{$patient->patient_id}", [
+        $response = $this->actingAs($admin, 'doctor')->put("/admin/patients/{$patient->patient_id}", [
             'full_name' => 'New Patient Name',
             'date_of_birth' => '2019-04-15',
             'gender' => 'female',
@@ -170,13 +169,13 @@ class AdminPatientTest extends TestCase
 
     public function test_edit_with_patient_id_in_payload_gives_422_and_leaves_id_unchanged(): void
     {
-        $admin = Admin::factory()->create();
+        $admin = Doctor::factory()->admin()->create();
         $patient = Patient::factory()->create([
             'patient_id' => 'PAT-IMMUTABLE-ORIGINAL',
             'full_name' => 'Fixed Patient',
         ]);
 
-        $response = $this->actingAs($admin, 'admin')->put("/admin/patients/{$patient->patient_id}", [
+        $response = $this->actingAs($admin, 'doctor')->put("/admin/patients/{$patient->patient_id}", [
             'patient_id' => 'PAT-MODIFIED-ATTEMPT',
             'full_name' => 'Attempted Name Change',
             'date_of_birth' => '2020-01-01',
@@ -193,12 +192,12 @@ class AdminPatientTest extends TestCase
 
     public function test_delete_patient_without_updates_succeeds_with_confirmation(): void
     {
-        $admin = Admin::factory()->create();
+        $admin = Doctor::factory()->admin()->create();
         $patient = Patient::factory()->create([
             'patient_id' => 'PAT-CLEAN-DELETE',
         ]);
 
-        $response = $this->actingAs($admin, 'admin')->delete("/admin/patients/{$patient->patient_id}", [
+        $response = $this->actingAs($admin, 'doctor')->delete("/admin/patients/{$patient->patient_id}", [
             'confirm_delete' => '1',
         ]);
 
@@ -210,12 +209,12 @@ class AdminPatientTest extends TestCase
 
     public function test_delete_patient_without_confirmation_checkbox_fails(): void
     {
-        $admin = Admin::factory()->create();
+        $admin = Doctor::factory()->admin()->create();
         $patient = Patient::factory()->create([
             'patient_id' => 'PAT-UNCONFIRMED',
         ]);
 
-        $response = $this->actingAs($admin, 'admin')->delete("/admin/patients/{$patient->patient_id}", []);
+        $response = $this->actingAs($admin, 'doctor')->delete("/admin/patients/{$patient->patient_id}", []);
 
         $response->assertStatus(302);
         $response->assertSessionHasErrors('confirm_delete');
@@ -225,7 +224,7 @@ class AdminPatientTest extends TestCase
 
     public function test_delete_patient_with_clinical_updates_is_blocked_and_patient_remains(): void
     {
-        $admin = Admin::factory()->create();
+        $admin = Doctor::factory()->admin()->create();
         $doctor = Doctor::factory()->create();
         $patient = Patient::factory()->create([
             'patient_id' => 'PAT-HAS-UPDATES',
@@ -236,7 +235,7 @@ class AdminPatientTest extends TestCase
             'doctor_id' => $doctor->doctor_id,
         ]);
 
-        $response = $this->actingAs($admin, 'admin')
+        $response = $this->actingAs($admin, 'doctor')
             ->from("/admin/patients/{$patient->patient_id}")
             ->delete("/admin/patients/{$patient->patient_id}", [
                 'confirm_delete' => '1',
@@ -253,11 +252,11 @@ class AdminPatientTest extends TestCase
         // 2026-11-17 22:30:00 UTC is 2026-11-18 00:30:00 in Africa/Cairo (UTC+2)
         Carbon::setTestNow(Carbon::parse('2026-11-17 22:30:00', 'UTC'));
 
-        $admin = Admin::factory()->create();
+        $admin = Doctor::factory()->admin()->create();
 
         try {
             // Cairo today (2026-11-18) must be accepted even though UTC is still 2026-11-17
-            $responseToday = $this->actingAs($admin, 'admin')->post('/admin/patients', [
+            $responseToday = $this->actingAs($admin, 'doctor')->post('/admin/patients', [
                 'patient_id' => 'PAT-CAIRO-TODAY-01',
                 'full_name' => 'Cairo Today Baby',
                 'date_of_birth' => '2026-11-18',
@@ -269,7 +268,7 @@ class AdminPatientTest extends TestCase
             $this->assertDatabaseHas('patients', ['patient_id' => 'PAT-CAIRO-TODAY-01']);
 
             // Cairo tomorrow (2026-11-19) must be rejected
-            $responseTomorrow = $this->actingAs($admin, 'admin')->post('/admin/patients', [
+            $responseTomorrow = $this->actingAs($admin, 'doctor')->post('/admin/patients', [
                 'patient_id' => 'PAT-CAIRO-FUT-02',
                 'full_name' => 'Cairo Future Baby',
                 'date_of_birth' => '2026-11-19',
@@ -286,7 +285,7 @@ class AdminPatientTest extends TestCase
 
     public function test_admin_search_with_literal_percent_and_underscore_searches_literally(): void
     {
-        $admin = Admin::factory()->create();
+        $admin = Doctor::factory()->admin()->create();
 
         Patient::factory()->create([
             'patient_id' => 'PAT-PCT-100',
@@ -302,14 +301,14 @@ class AdminPatientTest extends TestCase
         ]);
 
         // Search for literal '%'
-        $responsePercent = $this->actingAs($admin, 'admin')->get('/admin/patients?search=' . urlencode('%'));
+        $responsePercent = $this->actingAs($admin, 'doctor')->get('/admin/patients?search=' . urlencode('%'));
         $responsePercent->assertOk();
         $responsePercent->assertSee('Patient 100% Stable');
         $responsePercent->assertDontSee('Patient John_Doe');
         $responsePercent->assertDontSee('Patient Normal Name');
 
         // Search for literal '_'
-        $responseUnderscore = $this->actingAs($admin, 'admin')->get('/admin/patients?search=' . urlencode('_'));
+        $responseUnderscore = $this->actingAs($admin, 'doctor')->get('/admin/patients?search=' . urlencode('_'));
         $responseUnderscore->assertOk();
         $responseUnderscore->assertDontSee('Patient 100% Stable');
         $responseUnderscore->assertSee('Patient John_Doe');

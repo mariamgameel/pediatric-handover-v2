@@ -2,10 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\Admin\AdminController as AdminManagementController;
 use App\Http\Controllers\Admin\DoctorController as AdminDoctorController;
 use App\Http\Controllers\Admin\PatientController as AdminPatientController;
-use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\Doctor\PatientController as DoctorPatientController;
 use App\Http\Controllers\DoctorAuthController;
@@ -20,10 +18,6 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 Route::get('/', function () {
-    if (auth('admin')->check()) {
-        return redirect()->route('admin.dashboard');
-    }
-
     if (auth('doctor')->check()) {
         return redirect()->route('dashboard');
     }
@@ -36,7 +30,7 @@ Route::get('/', function () {
 | Doctor Guest Routes (guard: doctor)
 |--------------------------------------------------------------------------
 */
-Route::middleware('guest:doctor,admin')->group(function (): void {
+Route::middleware('guest:doctor')->group(function (): void {
     Route::get('/register', [DoctorAuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [DoctorAuthController::class, 'register'])->middleware('throttle:register');
 
@@ -71,21 +65,10 @@ Route::middleware(['auth:doctor', 'doctor.active'])->group(function (): void {
 
 /*
 |--------------------------------------------------------------------------
-| Admin Guest Routes (guard: admin)
+| Admin Authenticated Routes (guard: doctor, with admin role)
 |--------------------------------------------------------------------------
 */
-Route::prefix('admin')->name('admin.')->middleware('guest:doctor,admin')->group(function (): void {
-    Route::get('/login', [AdminAuthController::class, 'showLogin'])->name('login');
-    Route::post('/login', [AdminAuthController::class, 'login'])->middleware('throttle:login');
-});
-
-/*
-|--------------------------------------------------------------------------
-| Admin Authenticated Routes (guard: admin)
-|--------------------------------------------------------------------------
-*/
-Route::prefix('admin')->name('admin.')->middleware(['auth:admin', 'admin.active'])->group(function (): void {
-    Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');
+Route::prefix('admin')->name('admin.')->middleware(['auth:doctor', 'doctor.active', 'admin'])->group(function (): void {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
     // Admin patient management (create placed before wildcard parameter)
@@ -102,8 +85,4 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:admin', 'admin.active'
     Route::get('/doctors/{doctor_id}', [AdminDoctorController::class, 'show'])->name('doctors.show');
     Route::delete('/doctors/{doctor_id}', [AdminDoctorController::class, 'destroy'])->name('doctors.destroy');
     Route::post('/doctors/{doctor_id}/restore', [AdminDoctorController::class, 'restore'])->name('doctors.restore');
-
-    // Admin accounts management (static before {param})
-    Route::get('/admins', [AdminManagementController::class, 'index'])->name('admins.index');
-    Route::delete('/admins/{admin_id}', [AdminManagementController::class, 'destroy'])->name('admins.destroy');
 });

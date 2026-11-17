@@ -15,15 +15,15 @@ class DeletePatientRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        $admin = auth('admin')->user();
-        if ($admin === null) {
+        $doctor = auth('doctor')->user();
+        if ($doctor === null) {
             return false;
         }
 
         $patientId = (string) $this->route('patient_id');
         $patient = Patient::find($patientId);
 
-        return Gate::forUser($admin)->allows('delete', $patient);
+        return Gate::forUser($doctor)->allows('delete', $patient);
     }
 
     /**

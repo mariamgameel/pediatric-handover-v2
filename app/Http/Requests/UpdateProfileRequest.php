@@ -52,6 +52,7 @@ class UpdateProfileRequest extends FormRequest
             'remember_token' => ['prohibited'],
             'profile_image' => ['prohibited'],
             'deleted_at' => ['prohibited'],
+            'is_admin' => ['prohibited'],
         ];
     }
 
@@ -69,6 +70,7 @@ class UpdateProfileRequest extends FormRequest
                 'remember_token',
                 'profile_image',
                 'deleted_at',
+                'is_admin',
             ];
 
             foreach ($disallowedFields as $field) {

@@ -7,13 +7,13 @@
 
     <nav style="margin-bottom: 1.5rem;">
         <ul style="list-style: none; padding: 0; display: flex; gap: 1rem;">
+            <li><a href="{{ route('dashboard') }}">Doctor Dashboard</a></li>
             <li><a href="{{ route('admin.patients.index') }}">Patients</a></li>
             <li><a href="{{ route('admin.doctors.index') }}">Doctors</a></li>
-            <li><a href="{{ route('admin.admins.index') }}">Administrators</a></li>
         </ul>
     </nav>
 
-    <form method="POST" action="{{ route('admin.logout') }}">
+    <form method="POST" action="{{ route('logout') }}">
         @csrf
         <button type="submit">Logout</button>
     </form>

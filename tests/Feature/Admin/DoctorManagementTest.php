@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
-use App\Models\Admin;
 use App\Models\ClinicalUpdate;
 use App\Models\Doctor;
 use App\Models\Patient;
@@ -15,19 +14,19 @@ class DoctorManagementTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected Admin $admin;
+    protected Doctor $admin;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->admin = Admin::factory()->create();
+        $this->admin = Doctor::factory()->admin()->create();
     }
 
     public function test_admin_can_list_doctors_with_pagination(): void
     {
         Doctor::factory()->count(25)->create();
 
-        $response = $this->actingAs($this->admin, 'admin')->get('/admin/doctors');
+        $response = $this->actingAs($this->admin, 'doctor')->get('/admin/doctors');
 
         $response->assertOk();
         $response->assertViewIs('admin.doctors.index');
@@ -36,7 +35,7 @@ class DoctorManagementTest extends TestCase
         /** @var \Illuminate\Pagination\LengthAwarePaginator $doctors */
         $doctors = $response->viewData('doctors');
         $this->assertSame(20, $doctors->perPage());
-        $this->assertSame(25, $doctors->total());
+        $this->assertSame(26, $doctors->total());
     }
 
     public function test_admin_can_search_doctors_by_id_name_and_email_including_arabic_name(): void
@@ -54,25 +53,25 @@ class DoctorManagementTest extends TestCase
         ]);
 
         // Search by Arabic name
-        $responseArabic = $this->actingAs($this->admin, 'admin')->get('/admin/doctors?search=أحمد');
+        $responseArabic = $this->actingAs($this->admin, 'doctor')->get('/admin/doctors?search=أحمد');
         $responseArabic->assertOk();
         $responseArabic->assertSee('DOC-ARABIC-01');
         $responseArabic->assertDontSee('DOC-ENG-02');
 
         // Search by Doctor ID
-        $responseId = $this->actingAs($this->admin, 'admin')->get('/admin/doctors?search=DOC-ENG-02');
+        $responseId = $this->actingAs($this->admin, 'doctor')->get('/admin/doctors?search=DOC-ENG-02');
         $responseId->assertOk();
         $responseId->assertSee('Dr. Gregory House');
         $responseId->assertDontSee('د. أحمد محمود');
 
         // Search by Email
-        $responseEmail = $this->actingAs($this->admin, 'admin')->get('/admin/doctors?search=ahmed@hospital.local');
+        $responseEmail = $this->actingAs($this->admin, 'doctor')->get('/admin/doctors?search=ahmed@hospital.local');
         $responseEmail->assertOk();
         $responseEmail->assertSee('DOC-ARABIC-01');
         $responseEmail->assertDontSee('DOC-ENG-02');
 
         // Search with LIKE wildcards escaped
-        $responseEscaped = $this->actingAs($this->admin, 'admin')->get('/admin/doctors?search=%_');
+        $responseEscaped = $this->actingAs($this->admin, 'doctor')->get('/admin/doctors?search=%_');
         $responseEscaped->assertOk();
         $responseEscaped->assertDontSee('DOC-ARABIC-01');
         $responseEscaped->assertDontSee('DOC-ENG-02');
@@ -92,25 +91,25 @@ class DoctorManagementTest extends TestCase
         $deletedDoc->delete();
 
         // Default: active only
-        $responseDefault = $this->actingAs($this->admin, 'admin')->get('/admin/doctors');
+        $responseDefault = $this->actingAs($this->admin, 'doctor')->get('/admin/doctors');
         $responseDefault->assertOk();
         $responseDefault->assertSee('DOC-ACTIVE-01');
         $responseDefault->assertDontSee('DOC-DELETED-02');
 
         // Filter: active
-        $responseActive = $this->actingAs($this->admin, 'admin')->get('/admin/doctors?status=active');
+        $responseActive = $this->actingAs($this->admin, 'doctor')->get('/admin/doctors?status=active');
         $responseActive->assertOk();
         $responseActive->assertSee('DOC-ACTIVE-01');
         $responseActive->assertDontSee('DOC-DELETED-02');
 
         // Filter: deleted
-        $responseDeleted = $this->actingAs($this->admin, 'admin')->get('/admin/doctors?status=deleted');
+        $responseDeleted = $this->actingAs($this->admin, 'doctor')->get('/admin/doctors?status=deleted');
         $responseDeleted->assertOk();
         $responseDeleted->assertDontSee('DOC-ACTIVE-01');
         $responseDeleted->assertSee('DOC-DELETED-02');
 
         // Filter: all
-        $responseAll = $this->actingAs($this->admin, 'admin')->get('/admin/doctors?status=all');
+        $responseAll = $this->actingAs($this->admin, 'doctor')->get('/admin/doctors?status=all');
         $responseAll->assertOk();
         $responseAll->assertSee('DOC-ACTIVE-01');
         $responseAll->assertSee('DOC-DELETED-02');
@@ -135,7 +134,7 @@ class DoctorManagementTest extends TestCase
             'content' => 'Patient has stabilized following pediatric resuscitation protocol.',
         ]);
 
-        $response = $this->actingAs($this->admin, 'admin')->get("/admin/doctors/{$doctor->doctor_id}");
+        $response = $this->actingAs($this->admin, 'doctor')->get("/admin/doctors/{$doctor->doctor_id}");
 
         $response->assertOk();
         $response->assertViewIs('admin.doctors.show');
@@ -163,7 +162,7 @@ class DoctorManagementTest extends TestCase
         ]);
         $doctor->delete();
 
-        $response = $this->actingAs($this->admin, 'admin')->get("/admin/doctors/{$doctor->doctor_id}");
+        $response = $this->actingAs($this->admin, 'doctor')->get("/admin/doctors/{$doctor->doctor_id}");
 
         $response->assertOk();
         $response->assertSee('DOC-TRASH-01');
@@ -187,7 +186,7 @@ class DoctorManagementTest extends TestCase
             'content' => 'Routine morning round observation.',
         ]);
 
-        $response = $this->actingAs($this->admin, 'admin')->delete("/admin/doctors/{$doctor->doctor_id}", [
+        $response = $this->actingAs($this->admin, 'doctor')->delete("/admin/doctors/{$doctor->doctor_id}", [
             'confirm_delete' => '1',
         ]);
 
@@ -222,7 +221,7 @@ class DoctorManagementTest extends TestCase
         ]);
 
         // Attempt delete without confirmation checkbox
-        $response = $this->actingAs($this->admin, 'admin')->delete("/admin/doctors/{$doctor->doctor_id}", []);
+        $response = $this->actingAs($this->admin, 'doctor')->delete("/admin/doctors/{$doctor->doctor_id}", []);
 
         $response->assertSessionHasErrors('confirm_delete');
         $this->assertNotSoftDeleted('doctors', ['doctor_id' => 'DOC-NO-CONFIRM']);
@@ -247,7 +246,7 @@ class DoctorManagementTest extends TestCase
         $this->assertGuest('doctor');
 
         // Admin restores the doctor
-        $restoreResponse = $this->actingAs($this->admin, 'admin')
+        $restoreResponse = $this->actingAs($this->admin, 'doctor')
             ->post("/admin/doctors/{$doctor->doctor_id}/restore");
 
         $restoreResponse->assertRedirect("/admin/doctors/{$doctor->doctor_id}");
@@ -255,7 +254,7 @@ class DoctorManagementTest extends TestCase
         $this->assertNotSoftDeleted('doctors', ['doctor_id' => 'DOC-RESTORE-01']);
 
         // Log out admin before attempting doctor login
-        auth('admin')->logout();
+        auth('doctor')->logout();
 
         // Doctor can now log in again
         $loginAttempt2 = $this->post('/login', [
@@ -279,8 +278,8 @@ class DoctorManagementTest extends TestCase
 
         foreach ($routes as [$method, $uri]) {
             $response = $this->actingAs($doctor, 'doctor')->call($method, $uri);
-            // Since doctor is not authenticated under admin guard, auth:admin redirects to admin login
-            $response->assertRedirect('/admin/login');
+            // Non-admin doctor gets 403 Forbidden on every /admin route
+            $response->assertForbidden();
         }
     }
 }

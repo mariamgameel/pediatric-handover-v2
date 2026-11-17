@@ -23,7 +23,7 @@ class PatientController extends Controller
      */
     public function index(Request $request, PatientService $patientService): View
     {
-        $admin = auth('admin')->user();
+        $admin = auth('doctor')->user();
         Gate::forUser($admin)->authorize('viewAny', Patient::class);
 
         $patients = $patientService->paginate($request->only([
@@ -45,7 +45,7 @@ class PatientController extends Controller
      */
     public function create(): View
     {
-        $admin = auth('admin')->user();
+        $admin = auth('doctor')->user();
         Gate::forUser($admin)->authorize('create', Patient::class);
 
         return view('admin.patients.create', [
@@ -58,7 +58,7 @@ class PatientController extends Controller
      */
     public function store(StorePatientRequest $request, PatientService $patientService): RedirectResponse
     {
-        $admin = auth('admin')->user();
+        $admin = auth('doctor')->user();
         Gate::forUser($admin)->authorize('create', Patient::class);
 
         $patient = $patientService->create($request->validated());
@@ -74,7 +74,7 @@ class PatientController extends Controller
     {
         $patient = Patient::findOrFail($patient_id);
 
-        $admin = auth('admin')->user();
+        $admin = auth('doctor')->user();
         Gate::forUser($admin)->authorize('view', $patient);
 
         return view('admin.patients.show', [
@@ -89,7 +89,7 @@ class PatientController extends Controller
     {
         $patient = Patient::findOrFail($patient_id);
 
-        $admin = auth('admin')->user();
+        $admin = auth('doctor')->user();
         Gate::forUser($admin)->authorize('update', $patient);
 
         return view('admin.patients.edit', [
@@ -105,7 +105,7 @@ class PatientController extends Controller
     {
         $patient = Patient::findOrFail($patient_id);
 
-        $admin = auth('admin')->user();
+        $admin = auth('doctor')->user();
         Gate::forUser($admin)->authorize('update', $patient);
 
         $patientService->update($patient, $request->only([
@@ -125,7 +125,7 @@ class PatientController extends Controller
     {
         $patient = Patient::findOrFail($patient_id);
 
-        $admin = auth('admin')->user();
+        $admin = auth('doctor')->user();
         Gate::forUser($admin)->authorize('delete', $patient);
 
         try {

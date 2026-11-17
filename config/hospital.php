@@ -38,6 +38,7 @@ return [
     | Used by AdminSeeder to bootstrap the initial hospital administrator.
     |
     */
+    'admin_doctor_id' => env('ADMIN_DOCTOR_ID', 'DOC-ADMIN-01'),
     'admin_name' => env('ADMIN_NAME', 'Hospital Admin'),
     'admin_email' => env('ADMIN_EMAIL', 'admin@hospital.local'),
     'admin_password' => env('ADMIN_PASSWORD', ''),

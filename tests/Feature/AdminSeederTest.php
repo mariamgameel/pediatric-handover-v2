@@ -23,10 +23,12 @@ class AdminSeederTest extends TestCase
 
         app(AdminSeeder::class)->run();
 
-        $this->assertDatabaseCount('admins', 1);
-        $this->assertDatabaseHas('admins', [
+        $this->assertDatabaseCount('doctors', 1);
+        $this->assertDatabaseHas('doctors', [
+            'doctor_id' => 'DOC-ADMIN-01',
             'email' => 'admin.idempotent@hospital.local',
             'full_name' => 'First Run Admin',
+            'is_admin' => 1,
         ]);
 
         // Second run with updated name and password
@@ -37,10 +39,12 @@ class AdminSeederTest extends TestCase
 
         app(AdminSeeder::class)->run();
 
-        $this->assertDatabaseCount('admins', 1);
-        $this->assertDatabaseHas('admins', [
+        $this->assertDatabaseCount('doctors', 1);
+        $this->assertDatabaseHas('doctors', [
+            'doctor_id' => 'DOC-ADMIN-01',
             'email' => 'admin.idempotent@hospital.local',
             'full_name' => 'Second Run Admin',
+            'is_admin' => 1,
         ]);
     }
 
@@ -88,9 +92,10 @@ class AdminSeederTest extends TestCase
 
         app(AdminSeeder::class)->run();
 
-        $this->assertDatabaseHas('admins', [
+        $this->assertDatabaseHas('doctors', [
             'email' => 'admin.prod@hospital.local',
             'full_name' => 'Hospital Admin',
+            'is_admin' => 1,
         ]);
     }
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Models\Admin;
+use App\Models\Doctor;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
 
@@ -22,36 +22,31 @@ class AdminCreateCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Create a new hospital system administrator account';
+    protected $description = 'Create or promote a hospital doctor as system administrator';
 
     /**
      * Execute the console command.
      */
     public function handle(): int
     {
+        $doctorId = (string) $this->ask('Hospital Doctor ID');
         $name = (string) $this->ask('Full Name');
         $email = (string) $this->ask('Email Address');
         $password = (string) $this->secret('Password');
         $passwordConfirmation = (string) $this->secret('Confirm Password');
 
-        $existingAdmin = Admin::withTrashed()->where('email', $email)->first();
-
-        $rules = [
-            'full_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255'],
-            'password' => ['required', 'string', 'min:8', 'same:password_confirmation'],
-        ];
-
-        if ($existingAdmin === null || !$existingAdmin->trashed()) {
-            $rules['email'][] = 'unique:admins,email';
-        }
-
         $validator = Validator::make([
+            'doctor_id' => $doctorId,
             'full_name' => $name,
             'email' => $email,
             'password' => $password,
             'password_confirmation' => $passwordConfirmation,
-        ], $rules);
+        ], [
+            'doctor_id' => ['required', 'string', 'max:' . config('hospital.doctor_id_max_length', 64)],
+            'full_name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255'],
+            'password' => ['required', 'string', 'min:8', 'same:password_confirmation'],
+        ]);
 
         if ($validator->fails()) {
             foreach ($validator->errors()->all() as $error) {
@@ -60,25 +55,46 @@ class AdminCreateCommand extends Command
             return self::FAILURE;
         }
 
-        if ($existingAdmin !== null && $existingAdmin->trashed()) {
-            $existingAdmin->restore();
-            $existingAdmin->update([
+        $byDoctorId = Doctor::withTrashed()->where('doctor_id', $doctorId)->first();
+        $byEmail = Doctor::withTrashed()->where('email', $email)->first();
+
+        if ($byDoctorId !== null || $byEmail !== null) {
+            // Promote only if BOTH doctor_id and email match the SAME row
+            if ($byDoctorId === null || $byEmail === null || $byDoctorId->doctor_id !== $byEmail->doctor_id) {
+                $this->error("Cannot promote doctor: Doctor ID '{$doctorId}' and Email '{$email}' match different rows or an existing account conflict exists. Account takeover prevented.");
+                return self::FAILURE;
+            }
+
+            // If a matching soft-deleted doctor exists: restore it, promote it, update its password, and print a notice.
+            if ($byDoctorId->trashed()) {
+                $byDoctorId->restore();
+                $byDoctorId->update([
+                    'full_name' => $name,
+                    'password' => $password,
+                ]);
+                $byDoctorId->makeAdmin();
+                $this->info("Restored soft-deleted doctor '{$byDoctorId->full_name}' ({$doctorId}) and promoted to admin.");
+                return self::SUCCESS;
+            }
+
+            $byDoctorId->update([
                 'full_name' => $name,
                 'password' => $password,
             ]);
-
-            $this->info("Restored soft-deleted admin '{$existingAdmin->full_name}' ({$existingAdmin->email}) with ID {$existingAdmin->admin_id}.");
-
+            $byDoctorId->makeAdmin();
+            $this->info("Promoted existing doctor '{$byDoctorId->full_name}' ({$doctorId}) to admin.");
             return self::SUCCESS;
         }
 
-        $admin = Admin::create([
+        $doctor = Doctor::create([
+            'doctor_id' => $doctorId,
             'full_name' => $name,
             'email' => $email,
             'password' => $password,
         ]);
+        $doctor->makeAdmin();
 
-        $this->info("Admin '{$admin->full_name}' ({$admin->email}) created successfully with ID {$admin->admin_id}.");
+        $this->info("Admin doctor '{$doctor->full_name}' ({$doctorId}) created successfully.");
 
         return self::SUCCESS;
     }

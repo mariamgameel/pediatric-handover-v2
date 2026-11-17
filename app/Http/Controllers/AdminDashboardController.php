@@ -11,7 +11,7 @@ class AdminDashboardController extends Controller
     public function index(): View
     {
         return view('admin.dashboard', [
-            'admin' => auth('admin')->user(),
+            'admin' => auth('doctor')->user(),
         ]);
     }
 }

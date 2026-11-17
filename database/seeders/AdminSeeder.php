@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Models\Admin;
+use App\Models\Doctor;
 use Illuminate\Database\Seeder;
 use RuntimeException;
 
@@ -32,6 +32,10 @@ class AdminSeeder extends Seeder
      */
     public function run(): void
     {
+        $doctorId = config('hospital.admin_doctor_id') !== null
+            ? (string) config('hospital.admin_doctor_id')
+            : (string) env('ADMIN_DOCTOR_ID', 'DOC-ADMIN-01');
+
         $name = config('hospital.admin_name') !== null
             ? (string) config('hospital.admin_name')
             : (string) env('ADMIN_NAME', 'Hospital Admin');
@@ -59,24 +63,41 @@ class AdminSeeder extends Seeder
             $password = 'password';
         }
 
-        $existingAdmin = Admin::withTrashed()->where('email', $email)->first();
+        $byDoctorId = Doctor::withTrashed()->where('doctor_id', $doctorId)->first();
+        $byEmail = Doctor::withTrashed()->where('email', $email)->first();
 
-        if ($existingAdmin !== null) {
-            if ($existingAdmin->trashed()) {
-                $existingAdmin->restore();
-                $this->command?->info("Restored soft-deleted admin with email '{$email}'.");
+        if ($byDoctorId !== null || $byEmail !== null) {
+            // Promote only if BOTH doctor_id and email match the SAME row
+            if ($byDoctorId === null || $byEmail === null || $byDoctorId->doctor_id !== $byEmail->doctor_id) {
+                $errorMsg = "Admin seeding aborted: Doctor ID '{$doctorId}' and Email '{$email}' match different rows or an existing account conflict exists. Account takeover prevented.";
+                $this->command?->error($errorMsg);
+                throw new RuntimeException($errorMsg);
             }
 
-            $existingAdmin->update([
+            // If a matching soft-deleted doctor exists: restore it, promote it, update its password, and print a notice.
+            if ($byDoctorId->trashed()) {
+                $byDoctorId->restore();
+                $this->command?->info("Restored soft-deleted doctor '{$byDoctorId->full_name}' ({$doctorId}) and promoted to admin.");
+            }
+
+            $byDoctorId->update([
                 'full_name' => $name,
                 'password' => $password,
             ]);
-        } else {
-            Admin::create([
-                'full_name' => $name,
-                'email' => $email,
-                'password' => $password,
-            ]);
+            $byDoctorId->makeAdmin();
+
+            return;
         }
+
+        // Neither exists: create new doctor with is_admin = true
+        $doctor = Doctor::create([
+            'doctor_id' => $doctorId,
+            'full_name' => $name,
+            'email' => $email,
+            'password' => $password,
+        ]);
+        $doctor->makeAdmin();
+
+        $this->command?->info("Created new admin doctor '{$doctor->full_name}' ({$doctorId}).");
     }
 }
