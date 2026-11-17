@@ -34,22 +34,42 @@ class AdminCreateCommand extends Command
         $password = (string) $this->secret('Password');
         $passwordConfirmation = (string) $this->secret('Confirm Password');
 
+        $existingAdmin = Admin::withTrashed()->where('email', $email)->first();
+
+        $rules = [
+            'full_name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255'],
+            'password' => ['required', 'string', 'min:8', 'same:password_confirmation'],
+        ];
+
+        if ($existingAdmin === null || !$existingAdmin->trashed()) {
+            $rules['email'][] = 'unique:admins,email';
+        }
+
         $validator = Validator::make([
             'full_name' => $name,
             'email' => $email,
             'password' => $password,
             'password_confirmation' => $passwordConfirmation,
-        ], [
-            'full_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:admins,email'],
-            'password' => ['required', 'string', 'min:8', 'same:password_confirmation'],
-        ]);
+        ], $rules);
 
         if ($validator->fails()) {
             foreach ($validator->errors()->all() as $error) {
                 $this->error($error);
             }
             return self::FAILURE;
+        }
+
+        if ($existingAdmin !== null && $existingAdmin->trashed()) {
+            $existingAdmin->restore();
+            $existingAdmin->update([
+                'full_name' => $name,
+                'password' => $password,
+            ]);
+
+            $this->info("Restored soft-deleted admin '{$existingAdmin->full_name}' ({$existingAdmin->email}) with ID {$existingAdmin->admin_id}.");
+
+            return self::SUCCESS;
         }
 
         $admin = Admin::create([

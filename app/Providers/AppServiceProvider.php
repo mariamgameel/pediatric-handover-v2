@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Models\Admin;
+use App\Models\Doctor;
 use App\Models\Patient;
+use App\Policies\AdminPolicy;
+use App\Policies\DoctorPolicy;
 use App\Policies\PatientPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -29,6 +33,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(Patient::class, PatientPolicy::class);
+        Gate::policy(Doctor::class, DoctorPolicy::class);
+        Gate::policy(Admin::class, AdminPolicy::class);
 
         Password::defaults(function () {
             return Password::min(8);

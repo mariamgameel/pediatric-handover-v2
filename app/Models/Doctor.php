@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Database\Factories\DoctorFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -81,5 +82,19 @@ class Doctor extends Authenticatable
     public function clinicalUpdates(): HasMany
     {
         return $this->hasMany(ClinicalUpdate::class, 'doctor_id', 'doctor_id');
+    }
+
+    /**
+     * Get the doctor's display name.
+     *
+     * @return Attribute<string, never>
+     */
+    protected function displayName(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => $this->trashed()
+                ? "{$this->full_name} (deleted)"
+                : (string) $this->full_name,
+        );
     }
 }

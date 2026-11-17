@@ -63,4 +63,17 @@ class DoctorModelTest extends TestCase
         $this->assertCount(1, $doctor->clinicalUpdates);
         $this->assertInstanceOf(ClinicalUpdate::class, $doctor->clinicalUpdates->first());
     }
+
+    public function test_doctor_display_name_accessor(): void
+    {
+        $doctor = Doctor::factory()->create([
+            'full_name' => 'Dr. Gregory House',
+        ]);
+
+        $this->assertSame('Dr. Gregory House', $doctor->display_name);
+
+        $doctor->delete();
+
+        $this->assertSame('Dr. Gregory House (deleted)', $doctor->display_name);
+    }
 }

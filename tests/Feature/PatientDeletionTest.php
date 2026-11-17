@@ -75,4 +75,25 @@ class PatientDeletionTest extends TestCase
             $this->assertDatabaseHas('patients', ['patient_id' => $patient->patient_id]);
         }
     }
+
+    public function test_non_foreign_key_query_exception_is_rethrown(): void
+    {
+        $patient = Patient::factory()->create();
+
+        Patient::deleting(function (): void {
+            throw new QueryException(
+                'sqlite',
+                'DELETE FROM patients WHERE 1 = 1',
+                [],
+                new \PDOException('General error: 1 no such table: non_existent', 42000)
+            );
+        });
+
+        $service = app(PatientService::class);
+
+        $this->expectException(QueryException::class);
+        $this->expectExceptionMessage('no such table');
+
+        $service->delete($patient);
+    }
 }

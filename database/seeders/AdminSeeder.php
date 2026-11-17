@@ -59,12 +59,24 @@ class AdminSeeder extends Seeder
             $password = 'password';
         }
 
-        Admin::updateOrCreate(
-            ['email' => $email],
-            [
+        $existingAdmin = Admin::withTrashed()->where('email', $email)->first();
+
+        if ($existingAdmin !== null) {
+            if ($existingAdmin->trashed()) {
+                $existingAdmin->restore();
+                $this->command?->info("Restored soft-deleted admin with email '{$email}'.");
+            }
+
+            $existingAdmin->update([
                 'full_name' => $name,
                 'password' => $password,
-            ]
-        );
+            ]);
+        } else {
+            Admin::create([
+                'full_name' => $name,
+                'email' => $email,
+                'password' => $password,
+            ]);
+        }
     }
 }

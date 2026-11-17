@@ -100,11 +100,45 @@ class PatientService
 
             $patient->delete();
         } catch (QueryException $e) {
-            throw new CannotDeletePatientWithUpdatesException(
-                'Cannot delete patient because clinical updates exist for this patient.',
-                0,
-                $e
-            );
+            if ($this->isForeignKeyViolation($e)) {
+                throw new CannotDeletePatientWithUpdatesException(
+                    'Cannot delete patient because clinical updates exist for this patient.',
+                    0,
+                    $e
+                );
+            }
+
+            throw $e;
         }
+    }
+
+    /**
+     * Determine if the query exception was caused by a foreign key constraint violation.
+     */
+    private function isForeignKeyViolation(QueryException $e): bool
+    {
+        $sqlState = (string) ($e->errorInfo[0] ?? $e->getCode());
+        $driverCode = $e->errorInfo[1] ?? null;
+        $message = strtolower($e->getMessage());
+
+        // MySQL error 1451: Cannot delete or update a parent row: a foreign key constraint fails
+        if ($driverCode === 1451) {
+            return true;
+        }
+
+        // SQLite error 19: foreign key constraint failed
+        if ($driverCode === 19 && str_contains($message, 'foreign key')) {
+            return true;
+        }
+
+        // SQLSTATE 23000 FK checks if message contains foreign key or 1451
+        if ($sqlState === '23000' && (
+            str_contains($message, '1451') ||
+            str_contains($message, 'foreign key')
+        )) {
+            return true;
+        }
+
+        return false;
     }
 }

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Admin\AdminController as AdminManagementController;
+use App\Http\Controllers\Admin\DoctorController as AdminDoctorController;
 use App\Http\Controllers\Admin\PatientController as AdminPatientController;
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminDashboardController;
@@ -82,7 +84,7 @@ Route::prefix('admin')->name('admin.')->middleware('guest:doctor,admin')->group(
 | Admin Authenticated Routes (guard: admin)
 |--------------------------------------------------------------------------
 */
-Route::prefix('admin')->name('admin.')->middleware('auth:admin')->group(function (): void {
+Route::prefix('admin')->name('admin.')->middleware(['auth:admin', 'admin.active'])->group(function (): void {
     Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
@@ -94,4 +96,14 @@ Route::prefix('admin')->name('admin.')->middleware('auth:admin')->group(function
     Route::get('/patients/{patient_id}/edit', [AdminPatientController::class, 'edit'])->name('patients.edit');
     Route::put('/patients/{patient_id}', [AdminPatientController::class, 'update'])->name('patients.update');
     Route::delete('/patients/{patient_id}', [AdminPatientController::class, 'destroy'])->name('patients.destroy');
+
+    // Admin doctor management (static before {param})
+    Route::get('/doctors', [AdminDoctorController::class, 'index'])->name('doctors.index');
+    Route::get('/doctors/{doctor_id}', [AdminDoctorController::class, 'show'])->name('doctors.show');
+    Route::delete('/doctors/{doctor_id}', [AdminDoctorController::class, 'destroy'])->name('doctors.destroy');
+    Route::post('/doctors/{doctor_id}/restore', [AdminDoctorController::class, 'restore'])->name('doctors.restore');
+
+    // Admin accounts management (static before {param})
+    Route::get('/admins', [AdminManagementController::class, 'index'])->name('admins.index');
+    Route::delete('/admins/{admin_id}', [AdminManagementController::class, 'destroy'])->name('admins.destroy');
 });
