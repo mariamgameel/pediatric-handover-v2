@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Models\Patient;
 use App\Services\PatientImportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
@@ -162,5 +163,32 @@ class PatientImportServiceTest extends TestCase
         $this->assertTrue($result->isDryRun);
         $this->assertSame(1, $result->importedCount);
         $this->assertDatabaseMissing('patients', ['patient_id' => 'PAT-DRY-01']);
+    }
+
+    public function test_csv_import_applies_hospital_timezone_dob_rule(): void
+    {
+        // 2026-11-17 22:30:00 UTC is 2026-11-18 00:30:00 in Africa/Cairo (UTC+2)
+        Carbon::setTestNow(Carbon::parse('2026-11-17 22:30:00', 'UTC'));
+
+        try {
+            $csvPath = $this->tempDir . DIRECTORY_SEPARATOR . 'cairo_dob.csv';
+            $content = "patient_id,full_name,date_of_birth,gender\n" .
+                "PAT-IMP-TODAY,Cairo Today Child,2026-11-18,male\n" .
+                "PAT-IMP-FUT,Cairo Future Child,2026-11-19,female\n";
+            file_put_contents($csvPath, $content);
+
+            $service = app(PatientImportService::class);
+            $result = $service->import($csvPath);
+
+            $this->assertFalse($result->isSuccess());
+            $this->assertSame(1, $result->importedCount);
+            $this->assertSame(1, $result->skippedCount);
+
+            $this->assertDatabaseHas('patients', ['patient_id' => 'PAT-IMP-TODAY']);
+            $this->assertDatabaseMissing('patients', ['patient_id' => 'PAT-IMP-FUT']);
+            $this->assertArrayHasKey(3, $result->errors);
+        } finally {
+            Carbon::setTestNow(null);
+        }
     }
 }

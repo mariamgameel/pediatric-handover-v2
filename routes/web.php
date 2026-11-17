@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Admin\PatientController as AdminPatientController;
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\Doctor\PatientController as DoctorPatientController;
 use App\Http\Controllers\DoctorAuthController;
 use App\Http\Controllers\DoctorDashboardController;
+use App\Http\Controllers\DoctorProfileController;
 use App\Http\Controllers\GoogleAuthController;
 use Illuminate\Support\Facades\Route;
 
@@ -55,6 +58,13 @@ Route::middleware('guest:doctor,admin')->group(function (): void {
 Route::middleware(['auth:doctor', 'doctor.active'])->group(function (): void {
     Route::post('/logout', [DoctorAuthController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [DoctorDashboardController::class, 'index'])->name('dashboard');
+
+    Route::get('/profile', [DoctorProfileController::class, 'show'])->name('profile.show');
+    Route::get('/profile/edit', [DoctorProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [DoctorProfileController::class, 'update'])->name('profile.update');
+
+    Route::get('/patients', [DoctorPatientController::class, 'index'])->name('patients.index');
+    Route::get('/patients/{patient_id}', [DoctorPatientController::class, 'show'])->name('patients.show');
 });
 
 /*
@@ -75,4 +85,13 @@ Route::prefix('admin')->name('admin.')->middleware('guest:doctor,admin')->group(
 Route::prefix('admin')->name('admin.')->middleware('auth:admin')->group(function (): void {
     Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+    // Admin patient management (create placed before wildcard parameter)
+    Route::get('/patients', [AdminPatientController::class, 'index'])->name('patients.index');
+    Route::get('/patients/create', [AdminPatientController::class, 'create'])->name('patients.create');
+    Route::post('/patients', [AdminPatientController::class, 'store'])->name('patients.store');
+    Route::get('/patients/{patient_id}', [AdminPatientController::class, 'show'])->name('patients.show');
+    Route::get('/patients/{patient_id}/edit', [AdminPatientController::class, 'edit'])->name('patients.edit');
+    Route::put('/patients/{patient_id}', [AdminPatientController::class, 'update'])->name('patients.update');
+    Route::delete('/patients/{patient_id}', [AdminPatientController::class, 'destroy'])->name('patients.destroy');
 });

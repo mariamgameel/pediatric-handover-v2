@@ -14,6 +14,8 @@ return [
     */
     'doctor_id_max_length' => (int) env('HOSPITAL_DOCTOR_ID_MAX_LENGTH', 64),
     'patient_id_max_length' => (int) env('HOSPITAL_PATIENT_ID_MAX_LENGTH', 64),
+    'patient_id_pattern' => env('HOSPITAL_PATIENT_ID_PATTERN', '/^[A-Za-z0-9\-_]+$/'),
+    'timezone' => env('HOSPITAL_TIMEZONE', 'Africa/Cairo'),
 
     /*
     |--------------------------------------------------------------------------

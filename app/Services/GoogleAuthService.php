@@ -35,14 +35,19 @@ class GoogleAuthService
         $googleId = (string) $googleUser->getId();
         $email = (string) $googleUser->getEmail();
 
-        if ($email === '') {
-            return redirect()->route('login')->with('error', 'Google account must provide a verified email address.');
+        // 1. Refuse if Google returns no email or empty identifier
+        if ($email === '' || $googleId === '') {
+            return redirect()->route('login')->with('error', 'Unable to authenticate with Google. Missing email address.');
         }
 
-        // 1. Try finding by google_id (including soft-deleted)
+        // 2. Lookup by google_id
         $doctor = Doctor::withTrashed()->where('google_id', $googleId)->first();
 
-        // 2. Otherwise find by email and link google_id to the existing row
+        if ($doctor !== null && $doctor->trashed()) {
+            return redirect()->route('login')->with('error', 'Your doctor account is inactive.');
+        }
+
+        // 3. Otherwise find by email and link google_id to the existing row
         if ($doctor === null) {
             $rawUser = is_array($googleUser->user ?? null) ? $googleUser->user : [];
             $emailVerified = filter_var(
@@ -56,22 +61,27 @@ class GoogleAuthService
 
             $doctor = Doctor::withTrashed()->where('email', $email)->first();
 
-            if ($doctor !== null && !$doctor->trashed()) {
+            if ($doctor !== null) {
+                // If the doctor found by email is soft-deleted, refuse and do not link
+                if ($doctor->trashed()) {
+                    return redirect()->route('login')->with('error', 'Your doctor account is inactive.');
+                }
+
+                // NEVER overwrite an existing link: if doctor already linked to a different google_id, refuse
+                if ($doctor->google_id !== null && $doctor->google_id !== $googleId) {
+                    return redirect()->route('login')->with('error', 'Unable to authenticate with Google. This account is already linked to a different Google account.');
+                }
+
                 $doctor->update(['google_id' => $googleId]);
             }
         }
 
-        // 3. If doctor does not exist, reject and redirect to /register with message
+        // 4. If doctor does not exist, reject and redirect to /register with message
         if ($doctor === null) {
             return redirect()->route('register')->with(
                 'error',
                 'Hospital Doctor ID is required for registration. Please register with your hospital ID first.'
             );
-        }
-
-        // 4. If soft-deleted, reject login
-        if ($doctor->trashed()) {
-            return redirect()->route('login')->with('error', 'Your doctor account is inactive.');
         }
 
         // 5. Update last_login_at, log in using doctor guard, regenerate session

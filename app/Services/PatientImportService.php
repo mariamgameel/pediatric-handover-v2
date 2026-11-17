@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Patient;
+use App\Support\PatientRules;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use SplFileObject;
 
@@ -33,21 +33,7 @@ class PatientImportService
         $updatedCount = 0;
         $skippedCount = 0;
         $errors = [];
-
-        $rules = [
-            'patient_id' => [
-                'required',
-                'string',
-                'max:' . config('hospital.patient_id_max_length', 64),
-            ],
-            'full_name' => ['required', 'string', 'max:255'],
-            'date_of_birth' => ['required', 'date_format:Y-m-d'],
-            'gender' => [
-                'required',
-                'string',
-                Rule::in(config('hospital.genders', ['male', 'female'])),
-            ],
-        ];
+        $rules = PatientRules::rulesForImport();
 
         foreach ($file as $row) {
             $rowNumber++;

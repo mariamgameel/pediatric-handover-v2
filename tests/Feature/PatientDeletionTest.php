@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Exceptions\CannotDeletePatientWithUpdatesException;
 use App\Models\ClinicalUpdate;
+use App\Models\Doctor;
 use App\Models\Patient;
 use App\Services\PatientService;
 use Illuminate\Database\QueryException;
@@ -48,5 +49,30 @@ class PatientDeletionTest extends TestCase
         $this->expectException(QueryException::class);
 
         $patient->delete();
+    }
+
+    public function test_delete_converts_database_foreign_key_query_exception_to_cannot_delete_exception(): void
+    {
+        $patient = Patient::factory()->create();
+        $doctor = Doctor::factory()->create();
+
+        // Simulate a race condition: a clinical update is created AFTER the service's
+        // clinicalUpdates()->exists() check passes, right before the DELETE query executes.
+        Patient::deleting(function (Patient $p) use ($doctor): void {
+            ClinicalUpdate::factory()->create([
+                'patient_id' => $p->patient_id,
+                'doctor_id' => $doctor->doctor_id,
+            ]);
+        });
+
+        $service = app(PatientService::class);
+
+        try {
+            $service->delete($patient);
+            $this->fail('Expected CannotDeletePatientWithUpdatesException was not thrown.');
+        } catch (CannotDeletePatientWithUpdatesException $e) {
+            $this->assertInstanceOf(QueryException::class, $e->getPrevious());
+            $this->assertDatabaseHas('patients', ['patient_id' => $patient->patient_id]);
+        }
     }
 }

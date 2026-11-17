@@ -108,11 +108,16 @@ class GoogleAuthTest extends TestCase
         $this->assertNull($doctor->google_id);
     }
 
-    public function test_google_login_redirects_to_register_if_doctor_does_not_exist(): void
+    public function test_doctor_with_different_google_id_already_linked_refuses_overwrite(): void
     {
+        $doctor = Doctor::factory()->create([
+            'google_id' => 'original-google-id-111',
+            'email' => 'linked.doctor@hospital.local',
+        ]);
+
         $googleUser = Mockery::mock(SocialiteUser::class);
-        $googleUser->shouldReceive('getId')->andReturn('unknown-google-id');
-        $googleUser->shouldReceive('getEmail')->andReturn('unknown@hospital.local');
+        $googleUser->shouldReceive('getId')->andReturn('intruder-google-id-222');
+        $googleUser->shouldReceive('getEmail')->andReturn('linked.doctor@hospital.local');
         $googleUser->user = ['email_verified' => true];
 
         $provider = Mockery::mock(Provider::class);
@@ -122,13 +127,15 @@ class GoogleAuthTest extends TestCase
 
         $response = $this->get('/auth/google/callback');
 
-        $response->assertRedirect('/register');
+        $response->assertRedirect('/login');
         $response->assertSessionHas('error');
         $this->assertGuest('doctor');
-        $this->assertDatabaseMissing('doctors', ['email' => 'unknown@hospital.local']);
+
+        $doctor->refresh();
+        $this->assertSame('original-google-id-111', $doctor->google_id);
     }
 
-    public function test_google_login_rejects_soft_deleted_doctor(): void
+    public function test_soft_deleted_doctor_matched_by_google_id_is_refused(): void
     {
         $doctor = Doctor::factory()->create([
             'google_id' => 'deleted-google-id',
@@ -152,5 +159,72 @@ class GoogleAuthTest extends TestCase
         $response->assertRedirect('/login');
         $response->assertSessionHas('error');
         $this->assertGuest('doctor');
+    }
+
+    public function test_soft_deleted_doctor_matched_by_email_is_refused_and_google_id_stays_null(): void
+    {
+        $doctor = Doctor::factory()->create([
+            'google_id' => null,
+            'email' => 'softdeleted.email@hospital.local',
+        ]);
+        $doctor->delete();
+        $this->assertSoftDeleted('doctors', ['doctor_id' => $doctor->doctor_id]);
+
+        $googleUser = Mockery::mock(SocialiteUser::class);
+        $googleUser->shouldReceive('getId')->andReturn('incoming-google-id-888');
+        $googleUser->shouldReceive('getEmail')->andReturn('softdeleted.email@hospital.local');
+        $googleUser->user = ['email_verified' => true];
+
+        $provider = Mockery::mock(Provider::class);
+        $provider->shouldReceive('user')->once()->andReturn($googleUser);
+
+        Socialite::shouldReceive('driver')->with('google')->once()->andReturn($provider);
+
+        $response = $this->get('/auth/google/callback');
+
+        $response->assertRedirect('/login');
+        $response->assertSessionHas('error');
+        $this->assertGuest('doctor');
+
+        $doctor->refresh();
+        $this->assertNull($doctor->google_id);
+    }
+
+    public function test_google_user_with_no_email_is_refused(): void
+    {
+        $googleUser = Mockery::mock(SocialiteUser::class);
+        $googleUser->shouldReceive('getId')->andReturn('valid-google-id-no-email');
+        $googleUser->shouldReceive('getEmail')->andReturn(null);
+
+        $provider = Mockery::mock(Provider::class);
+        $provider->shouldReceive('user')->once()->andReturn($googleUser);
+
+        Socialite::shouldReceive('driver')->with('google')->once()->andReturn($provider);
+
+        $response = $this->get('/auth/google/callback');
+
+        $response->assertRedirect('/login');
+        $response->assertSessionHas('error');
+        $this->assertGuest('doctor');
+    }
+
+    public function test_google_login_redirects_to_register_if_doctor_does_not_exist(): void
+    {
+        $googleUser = Mockery::mock(SocialiteUser::class);
+        $googleUser->shouldReceive('getId')->andReturn('unknown-google-id');
+        $googleUser->shouldReceive('getEmail')->andReturn('unknown@hospital.local');
+        $googleUser->user = ['email_verified' => true];
+
+        $provider = Mockery::mock(Provider::class);
+        $provider->shouldReceive('user')->once()->andReturn($googleUser);
+
+        Socialite::shouldReceive('driver')->with('google')->once()->andReturn($provider);
+
+        $response = $this->get('/auth/google/callback');
+
+        $response->assertRedirect('/register');
+        $response->assertSessionHas('error');
+        $this->assertGuest('doctor');
+        $this->assertDatabaseMissing('doctors', ['email' => 'unknown@hospital.local']);
     }
 }
