@@ -39,6 +39,7 @@ class GoogleAuthTest extends TestCase
         $googleUser = Mockery::mock(SocialiteUser::class);
         $googleUser->shouldReceive('getId')->andReturn('google-user-id-999');
         $googleUser->shouldReceive('getEmail')->andReturn('google.doctor@hospital.local');
+        $googleUser->user = ['email_verified' => true];
 
         $provider = Mockery::mock(Provider::class);
         $provider->shouldReceive('user')->once()->andReturn($googleUser);
@@ -54,7 +55,7 @@ class GoogleAuthTest extends TestCase
         $this->assertNotNull($doctor->last_login_at);
     }
 
-    public function test_google_login_links_to_existing_doctor_by_email(): void
+    public function test_google_login_links_to_existing_doctor_by_verified_email(): void
     {
         $doctor = Doctor::factory()->create([
             'google_id' => null,
@@ -64,6 +65,7 @@ class GoogleAuthTest extends TestCase
         $googleUser = Mockery::mock(SocialiteUser::class);
         $googleUser->shouldReceive('getId')->andReturn('new-google-id-555');
         $googleUser->shouldReceive('getEmail')->andReturn('hospital.staff@hospital.local');
+        $googleUser->user = ['email_verified' => true];
 
         $provider = Mockery::mock(Provider::class);
         $provider->shouldReceive('user')->once()->andReturn($googleUser);
@@ -79,11 +81,39 @@ class GoogleAuthTest extends TestCase
         $this->assertSame('new-google-id-555', $doctor->google_id);
     }
 
+    public function test_google_login_refuses_unverified_email_and_does_not_link_doctor(): void
+    {
+        $doctor = Doctor::factory()->create([
+            'google_id' => null,
+            'email' => 'unverified.doc@hospital.local',
+        ]);
+
+        $googleUser = Mockery::mock(SocialiteUser::class);
+        $googleUser->shouldReceive('getId')->andReturn('unverified-google-id-777');
+        $googleUser->shouldReceive('getEmail')->andReturn('unverified.doc@hospital.local');
+        $googleUser->user = ['email_verified' => false];
+
+        $provider = Mockery::mock(Provider::class);
+        $provider->shouldReceive('user')->once()->andReturn($googleUser);
+
+        Socialite::shouldReceive('driver')->with('google')->once()->andReturn($provider);
+
+        $response = $this->get('/auth/google/callback');
+
+        $response->assertRedirect('/login');
+        $response->assertSessionHas('error');
+        $this->assertGuest('doctor');
+
+        $doctor->refresh();
+        $this->assertNull($doctor->google_id);
+    }
+
     public function test_google_login_redirects_to_register_if_doctor_does_not_exist(): void
     {
         $googleUser = Mockery::mock(SocialiteUser::class);
         $googleUser->shouldReceive('getId')->andReturn('unknown-google-id');
         $googleUser->shouldReceive('getEmail')->andReturn('unknown@hospital.local');
+        $googleUser->user = ['email_verified' => true];
 
         $provider = Mockery::mock(Provider::class);
         $provider->shouldReceive('user')->once()->andReturn($googleUser);
@@ -110,6 +140,7 @@ class GoogleAuthTest extends TestCase
         $googleUser = Mockery::mock(SocialiteUser::class);
         $googleUser->shouldReceive('getId')->andReturn('deleted-google-id');
         $googleUser->shouldReceive('getEmail')->andReturn('deleted.google@hospital.local');
+        $googleUser->user = ['email_verified' => true];
 
         $provider = Mockery::mock(Provider::class);
         $provider->shouldReceive('user')->once()->andReturn($googleUser);

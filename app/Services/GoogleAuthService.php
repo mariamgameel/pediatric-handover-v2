@@ -44,6 +44,16 @@ class GoogleAuthService
 
         // 2. Otherwise find by email and link google_id to the existing row
         if ($doctor === null) {
+            $rawUser = is_array($googleUser->user ?? null) ? $googleUser->user : [];
+            $emailVerified = filter_var(
+                $rawUser['email_verified'] ?? $rawUser['verified_email'] ?? false,
+                FILTER_VALIDATE_BOOLEAN
+            );
+
+            if (!$emailVerified) {
+                return redirect()->route('login')->with('error', 'Unable to authenticate with Google. Email address is not verified.');
+            }
+
             $doctor = Doctor::withTrashed()->where('email', $email)->first();
 
             if ($doctor !== null && !$doctor->trashed()) {
