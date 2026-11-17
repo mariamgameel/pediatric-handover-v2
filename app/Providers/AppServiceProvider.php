@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Contracts\GoogleIdTokenVerifier;
 use App\Models\Doctor;
 use App\Models\Patient;
 use App\Policies\DoctorPolicy;
 use App\Policies\PatientPolicy;
+use App\Services\Google\JwtGoogleIdTokenVerifier;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -22,7 +24,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(GoogleIdTokenVerifier::class, JwtGoogleIdTokenVerifier::class);
     }
 
     /**
@@ -32,6 +34,10 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::policy(Patient::class, PatientPolicy::class);
         Gate::policy(Doctor::class, DoctorPolicy::class);
+
+        Gate::define('viewApiDocs', function (?Doctor $user = null): bool {
+            return (bool) env('API_DOCS_ENABLED', !app()->isProduction());
+        });
 
         Password::defaults(function () {
             return Password::min(8);
@@ -49,6 +55,19 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('google-auth', function (Request $request) {
             return Limit::perMinute(5)->by((string) $request->ip());
+        });
+
+        RateLimiter::for('api-login', function (Request $request) {
+            $email = strtolower((string) $request->input('email'));
+            return Limit::perMinute(5)->by($request->ip() . '|' . $email);
+        });
+
+        RateLimiter::for('api-register', function (Request $request) {
+            return Limit::perMinute(10)->by((string) $request->ip());
+        });
+
+        RateLimiter::for('api-google', function (Request $request) {
+            return Limit::perMinute(10)->by((string) $request->ip());
         });
     }
 }
