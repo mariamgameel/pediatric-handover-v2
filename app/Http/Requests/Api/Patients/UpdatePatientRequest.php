@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Api\Patients;
 
 use App\Models\Patient;
 use App\Support\PatientRules;
@@ -25,7 +25,7 @@ class UpdatePatientRequest extends FormRequest
         $patientId = (string) $this->route('patient_id');
         $patient = Patient::find($patientId);
 
-        return Gate::forUser($doctor)->allows('update', $patient);
+        return Gate::forUser($doctor)->allows('update', $patient ?? Patient::class);
     }
 
     /**

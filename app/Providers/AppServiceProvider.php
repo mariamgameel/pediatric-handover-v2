@@ -62,5 +62,15 @@ class AppServiceProvider extends ServiceProvider
             $doctorId = (string) ($request->user()?->doctor_id ?: $request->ip());
             return Limit::perMinute(10)->by($doctorId);
         });
+
+        RateLimiter::for('api-patients-read', function (Request $request) {
+            $doctorId = (string) ($request->user()?->doctor_id ?: $request->ip());
+            return Limit::perMinute(120)->by($doctorId);
+        });
+
+        RateLimiter::for('api-admin-write', function (Request $request) {
+            $doctorId = (string) ($request->user()?->doctor_id ?: $request->ip());
+            return Limit::perMinute(30)->by($doctorId);
+        });
     }
 }

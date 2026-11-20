@@ -240,6 +240,42 @@ class ApiProfileTest extends TestCase
         $this->assertSame('Dr. Name Updated Only', $currentDoctor->full_name);
     }
 
+    public function test_resending_own_current_email_returns_200_without_current_password_and_does_not_revoke_other_tokens(): void
+    {
+        $doctor = Doctor::factory()->create([
+            'email' => 'doc.own@hospital.local',
+            'password' => Hash::make('Password123!'),
+        ]);
+
+        $currentToken = $doctor->createToken('device-current')->plainTextToken;
+        $otherToken = $doctor->createToken('device-other')->plainTextToken;
+
+        $this->assertSame(2, $doctor->tokens()->count());
+
+        $response = $this->withHeader('Authorization', 'Bearer ' . $currentToken)
+            ->patchJson('/api/v1/profile', [
+                'email' => 'doc.own@hospital.local',
+                'full_name' => 'Dr. Own Name Updated',
+            ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+            'message' => 'Profile updated successfully.',
+            'data' => [
+                'doctor' => [
+                    'email' => 'doc.own@hospital.local',
+                    'full_name' => 'Dr. Own Name Updated',
+                ],
+            ],
+        ]);
+
+        $doctor->refresh();
+        $this->assertSame('doc.own@hospital.local', $doctor->email);
+        $this->assertSame('Dr. Own Name Updated', $doctor->full_name);
+        $this->assertSame(2, $doctor->tokens()->count());
+    }
+
     public function test_email_change_with_correct_current_password_updates_email_and_revokes_other_tokens(): void
     {
         $doctor = Doctor::factory()->create([

@@ -17,7 +17,7 @@ class PatientService
      * @param array<string, mixed> $filters
      * @return LengthAwarePaginator<Patient>
      */
-    public function paginate(array $filters): LengthAwarePaginator
+    public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
     {
         $query = Patient::query();
 
@@ -50,9 +50,12 @@ class PatientService
         }
 
         $direction = strtolower((string) ($filters['direction'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
-        $query->orderBy('full_name', $direction);
+        $query->orderBy('full_name', $direction)->orderBy('patient_id', 'asc');
 
-        return $query->paginate(20)->withQueryString();
+        $limit = isset($filters['per_page']) ? (int) $filters['per_page'] : $perPage;
+        $page = isset($filters['page']) ? (int) $filters['page'] : null;
+
+        return $query->paginate($limit, ['*'], 'page', $page)->withQueryString();
     }
 
     /**

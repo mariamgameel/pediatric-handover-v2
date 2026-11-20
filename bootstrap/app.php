@@ -56,6 +56,14 @@ return Application::configure(basePath: dirname(__DIR__))
                 );
             }
 
+            if ($e instanceof \App\Exceptions\CannotDeletePatientWithUpdatesException) {
+                return ApiResponse::error(
+                    $e->getMessage() ?: 'Cannot delete patient because clinical updates exist.',
+                    'patient_has_clinical_updates',
+                    409
+                );
+            }
+
             if ($e instanceof AuthorizationException || $e instanceof AccessDeniedHttpException) {
                 return ApiResponse::error('This action is unauthorized.', 'forbidden', 403);
             }

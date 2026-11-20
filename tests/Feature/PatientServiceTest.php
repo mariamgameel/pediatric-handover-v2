@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Exceptions\CannotDeletePatientWithUpdatesException;
-use App\Http\Requests\StorePatientRequest;
-use App\Http\Requests\UpdatePatientRequest;
+use App\Http\Requests\Api\Patients\StorePatientRequest;
+use App\Http\Requests\Api\Patients\UpdatePatientRequest;
 use App\Models\ClinicalUpdate;
 use App\Models\Doctor;
 use App\Models\Patient;
@@ -93,6 +93,31 @@ class PatientServiceTest extends TestCase
 
         $desc = $this->service->paginate(['direction' => 'desc']);
         $this->assertSame('Zachary Taylor', $desc->first()->full_name);
+    }
+
+    public function test_paginate_patients_accepts_custom_per_page_and_filter(): void
+    {
+        Patient::factory()->count(15)->create();
+
+        $byParam = $this->service->paginate([], 10);
+        $this->assertSame(10, $byParam->perPage());
+        $this->assertCount(10, $byParam->items());
+
+        $byFilter = $this->service->paginate(['per_page' => 5]);
+        $this->assertSame(5, $byFilter->perPage());
+        $this->assertCount(5, $byFilter->items());
+    }
+
+    public function test_paginate_patients_uses_patient_id_as_deterministic_tiebreaker(): void
+    {
+        Patient::factory()->create(['patient_id' => 'PAT-B', 'full_name' => 'Identical Name']);
+        Patient::factory()->create(['patient_id' => 'PAT-A', 'full_name' => 'Identical Name']);
+
+        $page1 = $this->service->paginate(['per_page' => 1, 'page' => 1]);
+        $this->assertSame('PAT-A', $page1->first()->patient_id);
+
+        $page2 = $this->service->paginate(['per_page' => 1, 'page' => 2]);
+        $this->assertSame('PAT-B', $page2->first()->patient_id);
     }
 
     public function test_create_and_update_patient(): void

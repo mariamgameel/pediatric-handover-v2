@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\V1\Admin\PatientController as AdminPatientController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\PatientController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -38,5 +40,28 @@ Route::prefix('v1')->group(function (): void {
         Route::patch('profile', [ProfileController::class, 'update'])
             ->middleware('throttle:api-profile')
             ->name('api.v1.profile.update');
+
+        $patientIdPattern = trim(trim((string) config('hospital.patient_id_pattern', '/^[A-Za-z0-9\-_]+$/'), '/'), '^$');
+
+        // Patients read routes
+        Route::middleware('throttle:api-patients-read')->group(function () use ($patientIdPattern): void {
+            Route::get('patients', [PatientController::class, 'index'])
+                ->name('api.v1.patients.index');
+            Route::get('patients/{patient_id}', [PatientController::class, 'show'])
+                ->where('patient_id', $patientIdPattern)
+                ->name('api.v1.patients.show');
+        });
+
+        // Admin patients write routes
+        Route::middleware(['admin', 'throttle:api-admin-write'])->prefix('admin')->group(function () use ($patientIdPattern): void {
+            Route::post('patients', [AdminPatientController::class, 'store'])
+                ->name('api.v1.admin.patients.store');
+            Route::put('patients/{patient_id}', [AdminPatientController::class, 'update'])
+                ->where('patient_id', $patientIdPattern)
+                ->name('api.v1.admin.patients.update');
+            Route::delete('patients/{patient_id}', [AdminPatientController::class, 'destroy'])
+                ->where('patient_id', $patientIdPattern)
+                ->name('api.v1.admin.patients.destroy');
+        });
     });
 });
