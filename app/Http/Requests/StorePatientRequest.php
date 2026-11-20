@@ -16,7 +16,7 @@ class StorePatientRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        $doctor = auth('doctor')->user();
+        $doctor = $this->user();
 
         return $doctor !== null && Gate::forUser($doctor)->allows('create', Patient::class);
     }

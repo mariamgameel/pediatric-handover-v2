@@ -16,7 +16,7 @@ class UpdateProfileRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return auth('doctor')->check();
+        return $this->user() !== null;
     }
 
     /**
@@ -26,8 +26,9 @@ class UpdateProfileRequest extends FormRequest
      */
     public function rules(): array
     {
-        /** @var Doctor $doctor */
-        $doctor = auth('doctor')->user();
+        /** @var Doctor|null $doctor */
+        $doctor = $this->user();
+        $doctorId = $doctor?->doctor_id;
 
         return [
             'full_name' => ['required', 'string', 'max:255'],
@@ -37,7 +38,7 @@ class UpdateProfileRequest extends FormRequest
                 'email',
                 'max:255',
                 // Check all rows including soft-deleted, ignoring current doctor's own record
-                Rule::unique('doctors', 'email')->ignore($doctor->doctor_id, 'doctor_id'),
+                Rule::unique('doctors', 'email')->ignore($doctorId, 'doctor_id'),
             ],
             'phone_number' => [
                 'nullable',

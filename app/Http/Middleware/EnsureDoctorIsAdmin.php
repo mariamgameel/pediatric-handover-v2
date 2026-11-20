@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Support\ApiResponse;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,10 +16,10 @@ class EnsureDoctorIsAdmin
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $doctor = auth('doctor')->user();
+        $user = $request->user();
 
-        if ($doctor === null || !$doctor->isAdmin()) {
-            abort(403, 'Administrator access required.');
+        if ($user === null || ! $user->isAdmin()) {
+            return ApiResponse::error('Administrator access required.', 'forbidden', 403);
         }
 
         return $next($request);

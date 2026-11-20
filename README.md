@@ -1,28 +1,26 @@
-# Pediatric Handover System
+# Pediatric Handover System - API Backend
 
-A clinical pediatric handover system for a closed hospital department.
+A secure, clinical pediatric handover backend system for a closed hospital department, designed as a stateless RESTful JSON API serving native mobile applications (iOS and Android).
 
 ## Tech Stack
-- PHP 8.3+ (Strict Types, PSR-12)
-- Laravel 13 (Latest Stable)
-- MySQL 8
-- Server-rendered Blade with placeholder scaffolding (Tailwind/Vite)
-- Session-based multi-guard authentication (`doctor` and `admin`)
+- **Language**: PHP 8.4+ (Strict Types, PSR-12)
+- **Framework**: Laravel 13
+- **Database**: MySQL 8.x
+- **Authentication**: Laravel Sanctum (Stateless Bearer Tokens, Personal Access Tokens)
+- **API Documentation**: Scramble OpenAPI 3.1 & Interactive Documentation UI (available at `/docs/api`)
 
 ---
 
 ## Setup & Installation
 
 ### Prerequisites
-- PHP 8.3 or higher (with `pdo_mysql`, `mbstring`, `openssl`, `bcmath`, `curl`)
+- PHP 8.4 or higher with extensions: `pdo_mysql`, `mbstring`, `openssl`, `bcmath`, `curl`, `json`
 - Composer 2.x
-- Node.js 20+ & npm
 - MySQL 8.x
 
 ### 1. Clone & Install Dependencies
 ```bash
 composer install
-npm install
 ```
 
 ### 2. Environment Configuration
@@ -30,6 +28,7 @@ Copy `.env.example` to `.env`:
 ```bash
 cp .env.example .env
 ```
+
 Generate the application key:
 ```bash
 php artisan key:generate
@@ -46,15 +45,23 @@ DB_PASSWORD=your_db_password
 DB_TIMEZONE="+00:00"
 ```
 
-Configure default administrator bootstrap credentials in `.env`:
+Configure API and Authentication settings in `.env`:
 ```env
-ADMIN_NAME="Hospital Admin"
-ADMIN_EMAIL=admin@hospital.local
-ADMIN_PASSWORD=your_secure_password
+# Session driver is set to array for stateless API operation
+SESSION_DRIVER=array
+
+# Comma-separated Google Client IDs for Web / Android / iOS
+GOOGLE_CLIENT_IDS=your_client_id_web,your_client_id_android,your_client_id_ios
+
+# API Documentation toggle (default: true)
+API_DOCS_ENABLED=true
+
+# Sanctum token expiration in minutes (default: 43200 = 30 days)
+SANCTUM_EXPIRATION=43200
 ```
 
 ### 3. Database Migration & Seeding
-Ensure MySQL has the database created:
+Create the database in MySQL:
 ```sql
 CREATE DATABASE pedi_handover CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
@@ -64,23 +71,49 @@ Run database migrations:
 php artisan migrate
 ```
 
-### 4. Code Quality & Formatting
-Run Laravel Pint to ensure PSR-12 and strict types compliance:
+Seed initial reference data:
+```bash
+php artisan db:seed
+```
+
+### 4. CLI Commands
+Create a hospital administrator account:
+```bash
+php artisan admin:create
+```
+
+Import hospital patient data from CSV:
+```bash
+php artisan patients:import path/to/patients.csv
+```
+
+### 5. Running Tests & Quality Checks
+Run the test suite:
+```bash
+php artisan test
+```
+
+Check code formatting with Laravel Pint:
 ```bash
 vendor/bin/pint --test
 ```
-To automatically format code:
+
+Automatically format code:
 ```bash
 vendor/bin/pint
 ```
 
-### 5. Running the Application
+### 6. Serving the Application
 Start the PHP development server:
 ```bash
 php artisan serve
 ```
-In a separate terminal, compile assets with Vite:
-```bash
-npm run dev
+
+Access the interactive API documentation at:
 ```
-Visit `http://localhost:8000` in your browser.
+http://127.0.0.1:8000/docs/api
+```
+The OpenAPI JSON specification is accessible at:
+```
+http://127.0.0.1:8000/docs/api.json
+```

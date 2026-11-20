@@ -76,4 +76,32 @@ class DoctorModelTest extends TestCase
 
         $this->assertSame('Dr. Gregory House (deleted)', $doctor->display_name);
     }
+
+    public function test_mass_assignment_of_is_admin_is_silently_ignored(): void
+    {
+        // 1. Doctor::create
+        $doctor = Doctor::create([
+            'doctor_id' => 'DOC-MASS-01',
+            'full_name' => 'Dr. Mass Assignment',
+            'email' => 'mass@hospital.local',
+            'password' => 'Password123!',
+            'is_admin' => true,
+        ]);
+
+        $this->assertFalse($doctor->isAdmin());
+        $this->assertFalse((bool) $doctor->fresh()->is_admin);
+
+        // 2. Doctor::fill
+        $doctor->fill(['is_admin' => true]);
+        $doctor->save();
+
+        $this->assertFalse($doctor->isAdmin());
+        $this->assertFalse((bool) $doctor->fresh()->is_admin);
+
+        // 3. Doctor::update
+        $doctor->update(['is_admin' => true]);
+
+        $this->assertFalse($doctor->isAdmin());
+        $this->assertFalse((bool) $doctor->fresh()->is_admin);
+    }
 }

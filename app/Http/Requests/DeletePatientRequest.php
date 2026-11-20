@@ -15,7 +15,7 @@ class DeletePatientRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        $doctor = auth('doctor')->user();
+        $doctor = $this->user();
         if ($doctor === null) {
             return false;
         }

@@ -16,7 +16,7 @@ return [
     */
 
     'defaults' => [
-        'guard' => env('AUTH_GUARD', 'doctor'),
+        'guard' => env('AUTH_GUARD', 'sanctum'),
         'passwords' => env('AUTH_PASSWORD_BROKER', 'doctors'),
     ],
 
@@ -38,8 +38,8 @@ return [
     */
 
     'guards' => [
-        'doctor' => [
-            'driver' => 'session',
+        'sanctum' => [
+            'driver' => 'sanctum',
             'provider' => 'doctors',
         ],
     ],

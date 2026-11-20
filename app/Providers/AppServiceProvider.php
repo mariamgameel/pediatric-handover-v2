@@ -43,20 +43,6 @@ class AppServiceProvider extends ServiceProvider
             return Password::min(8);
         });
 
-        RateLimiter::for('login', function (Request $request) {
-            $email = (string) $request->input('email');
-            return Limit::perMinute(5)->by($request->ip() . '|' . strtolower($email));
-        });
-
-        RateLimiter::for('register', function (Request $request) {
-            $email = (string) $request->input('email');
-            return Limit::perMinute(5)->by($request->ip() . '|' . strtolower($email));
-        });
-
-        RateLimiter::for('google-auth', function (Request $request) {
-            return Limit::perMinute(5)->by((string) $request->ip());
-        });
-
         RateLimiter::for('api-login', function (Request $request) {
             $email = strtolower((string) $request->input('email'));
             return Limit::perMinute(5)->by($request->ip() . '|' . $email);

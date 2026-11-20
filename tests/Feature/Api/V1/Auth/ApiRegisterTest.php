@@ -149,6 +149,48 @@ class ApiRegisterTest extends TestCase
         $this->assertDatabaseMissing('doctors', ['doctor_id' => 'DOC-API-004']);
     }
 
+    public function test_re_registering_a_soft_deleted_doctor_id_is_rejected(): void
+    {
+        $doctor = Doctor::factory()->create([
+            'doctor_id' => 'DOC-DELETED-ID',
+            'email' => 'old.email@hospital.local',
+        ]);
+        $doctor->delete();
+        $this->assertSoftDeleted('doctors', ['doctor_id' => 'DOC-DELETED-ID']);
+
+        $response = $this->postJson('/api/v1/auth/register', [
+            'doctor_id' => 'DOC-DELETED-ID',
+            'full_name' => 'New Doctor Reusing ID',
+            'email' => 'new.email@hospital.local',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('doctor_id');
+    }
+
+    public function test_re_registering_a_soft_deleted_doctor_email_is_rejected(): void
+    {
+        $doctor = Doctor::factory()->create([
+            'doctor_id' => 'DOC-OLD-01',
+            'email' => 'deleted.doctor@hospital.local',
+        ]);
+        $doctor->delete();
+        $this->assertSoftDeleted('doctors', ['email' => 'deleted.doctor@hospital.local']);
+
+        $response = $this->postJson('/api/v1/auth/register', [
+            'doctor_id' => 'DOC-NEW-02',
+            'full_name' => 'New Doctor Reusing Email',
+            'email' => 'deleted.doctor@hospital.local',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('email');
+    }
+
     public function test_doctor_registration_is_rate_limited(): void
     {
         $payload = [
