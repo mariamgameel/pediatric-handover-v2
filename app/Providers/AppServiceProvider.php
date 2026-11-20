@@ -24,6 +24,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        config(['sanctum.routes' => false]);
+
         $this->app->bind(GoogleIdTokenVerifier::class, JwtGoogleIdTokenVerifier::class);
     }
 
@@ -36,7 +38,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Doctor::class, DoctorPolicy::class);
 
         Gate::define('viewApiDocs', function (?Doctor $user = null): bool {
-            return (bool) env('API_DOCS_ENABLED', !app()->isProduction());
+            return (bool) config('hospital.api_docs_enabled', false);
         });
 
         Password::defaults(function () {
@@ -54,6 +56,11 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('api-google', function (Request $request) {
             return Limit::perMinute(10)->by((string) $request->ip());
+        });
+
+        RateLimiter::for('api-profile', function (Request $request) {
+            $doctorId = (string) ($request->user()?->doctor_id ?: $request->ip());
+            return Limit::perMinute(10)->by($doctorId);
         });
     }
 }

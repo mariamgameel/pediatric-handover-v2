@@ -70,4 +70,45 @@ class ApiExceptionHandlingTest extends TestCase
         ]);
         $response->assertJsonValidationErrors(['email', 'password']);
     }
+
+    public function test_500_response_masks_exception_message_when_debug_is_false(): void
+    {
+        config(['app.debug' => false]);
+
+        \Illuminate\Support\Facades\Route::get('/_test/error-500', function () {
+            throw new \RuntimeException('Database credentials secret leak');
+        });
+
+        $response = $this->getJson('/_test/error-500');
+
+        $response->assertStatus(500);
+        $response->assertJson([
+            'success' => false,
+            'message' => 'Internal server error.',
+            'error' => [
+                'code' => 'server_error',
+            ],
+        ]);
+        $response->assertDontSee('Database credentials secret leak');
+    }
+
+    public function test_500_response_exposes_exception_message_when_debug_is_true(): void
+    {
+        config(['app.debug' => true]);
+
+        \Illuminate\Support\Facades\Route::get('/_test/error-500-debug', function () {
+            throw new \RuntimeException('Helpful development error details');
+        });
+
+        $response = $this->getJson('/_test/error-500-debug');
+
+        $response->assertStatus(500);
+        $response->assertJson([
+            'success' => false,
+            'message' => 'Helpful development error details',
+            'error' => [
+                'code' => 'server_error',
+            ],
+        ]);
+    }
 }

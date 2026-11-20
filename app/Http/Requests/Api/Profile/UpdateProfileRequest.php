@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Api\Profile;
 
 use App\Models\Doctor;
 use Illuminate\Foundation\Http\FormRequest;
@@ -22,7 +22,7 @@ class UpdateProfileRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, mixed>
      */
     public function rules(): array
     {
@@ -31,20 +31,34 @@ class UpdateProfileRequest extends FormRequest
         $doctorId = $doctor?->doctor_id;
 
         return [
-            'full_name' => ['required', 'string', 'max:255'],
+            'full_name' => ['sometimes', 'required', 'string', 'max:255'],
             'email' => [
+                'sometimes',
                 'required',
                 'string',
                 'email',
                 'max:255',
-                // Check all rows including soft-deleted, ignoring current doctor's own record
                 Rule::unique('doctors', 'email')->ignore($doctorId, 'doctor_id'),
             ],
             'phone_number' => [
+                'sometimes',
                 'nullable',
                 'string',
                 'max:32',
                 'regex:/^[\d\s\+\-\(\)]*$/',
+            ],
+            'current_password' => [
+                Rule::requiredIf(function () use ($doctor): bool {
+                    if (!$this->has('email') || empty($doctor?->password)) {
+                        return false;
+                    }
+
+                    $incomingEmail = strtolower(trim((string) $this->input('email')));
+                    $currentEmail = strtolower((string) $doctor->email);
+
+                    return $incomingEmail !== $currentEmail;
+                }),
+                'string',
             ],
             'doctor_id' => ['prohibited'],
             'google_id' => ['prohibited'],
@@ -63,6 +77,17 @@ class UpdateProfileRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            $hasField = $this->exists('full_name')
+                || $this->exists('email')
+                || $this->exists('phone_number');
+
+            if (!$hasField) {
+                $validator->errors()->add(
+                    'payload',
+                    'At least one field (full_name, email, or phone_number) must be provided.'
+                );
+            }
+
             $disallowedFields = [
                 'doctor_id',
                 'google_id',
@@ -75,7 +100,7 @@ class UpdateProfileRequest extends FormRequest
             ];
 
             foreach ($disallowedFields as $field) {
-                if ($this->has($field)) {
+                if ($this->exists($field)) {
                     $validator->errors()->add(
                         $field,
                         "The {$field} field is immutable and cannot be submitted."

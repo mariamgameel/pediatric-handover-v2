@@ -98,4 +98,71 @@ class AdminSeederTest extends TestCase
             'is_admin' => 1,
         ]);
     }
+
+    public function test_admin_seeder_refuses_empty_password_in_staging(): void
+    {
+        $this->app->detectEnvironment(fn () => 'staging');
+
+        config([
+            'hospital.admin_name' => 'Hospital Admin',
+            'hospital.admin_email' => 'admin.staging@hospital.local',
+            'hospital.admin_password' => '',
+        ]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('ADMIN_PASSWORD cannot be empty in staging');
+
+        app(AdminSeeder::class)->run();
+    }
+
+    public function test_admin_seeder_refuses_insecure_password_in_staging(): void
+    {
+        $this->app->detectEnvironment(fn () => 'staging');
+
+        config([
+            'hospital.admin_name' => 'Hospital Admin',
+            'hospital.admin_email' => 'admin.staging@hospital.local',
+            'hospital.admin_password' => 'adminsecret123',
+        ]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('ADMIN_PASSWORD cannot be a known default password in staging');
+
+        app(AdminSeeder::class)->run();
+    }
+
+    public function test_admin_seeder_refuses_short_password_in_staging(): void
+    {
+        $this->app->detectEnvironment(fn () => 'staging');
+
+        config([
+            'hospital.admin_name' => 'Hospital Admin',
+            'hospital.admin_email' => 'admin.staging@hospital.local',
+            'hospital.admin_password' => 'Short1!',
+        ]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('ADMIN_PASSWORD must be at least 12 characters');
+
+        app(AdminSeeder::class)->run();
+    }
+
+    public function test_admin_seeder_succeeds_in_staging_with_secure_password(): void
+    {
+        $this->app->detectEnvironment(fn () => 'staging');
+
+        config([
+            'hospital.admin_name' => 'Hospital Admin',
+            'hospital.admin_email' => 'admin.staging@hospital.local',
+            'hospital.admin_password' => 'StagingSecurePassword2026!',
+        ]);
+
+        app(AdminSeeder::class)->run();
+
+        $this->assertDatabaseHas('doctors', [
+            'email' => 'admin.staging@hospital.local',
+            'full_name' => 'Hospital Admin',
+            'is_admin' => 1,
+        ]);
+    }
 }

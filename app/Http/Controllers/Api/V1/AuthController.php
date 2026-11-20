@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Contracts\GoogleIdTokenVerifier;
+use App\Exceptions\GoogleServiceUnavailableException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Auth\ApiGoogleAuthRequest;
 use App\Http\Requests\Api\Auth\ApiLoginRequest;
@@ -85,6 +86,12 @@ class AuthController extends Controller
     {
         try {
             $payload = $verifier->verify((string) $request->input('id_token'));
+        } catch (GoogleServiceUnavailableException $e) {
+            return ApiResponse::error(
+                'Google authentication service is currently unavailable. Please try again later.',
+                'service_unavailable',
+                503
+            );
         } catch (InvalidArgumentException $e) {
             return ApiResponse::error($e->getMessage(), 'invalid_token', 401);
         }

@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Services\Google;
 
 use App\Contracts\GoogleIdTokenVerifier;
+use App\Exceptions\GoogleServiceUnavailableException;
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use Throwable;
 
@@ -27,12 +29,13 @@ class JwtGoogleIdTokenVerifier implements GoogleIdTokenVerifier
      * @return array{sub: string, email: string, email_verified: bool, name: string}
      *
      * @throws InvalidArgumentException
+     * @throws GoogleServiceUnavailableException
      */
     public function verify(string $idToken): array
     {
         $idToken = trim($idToken);
         if ($idToken === '') {
-            throw new InvalidArgumentException('Google ID token is required.');
+            throw new InvalidArgumentException('Invalid Google ID token.');
         }
 
         $jwks = $this->getGoogleJwks();
@@ -41,38 +44,61 @@ class JwtGoogleIdTokenVerifier implements GoogleIdTokenVerifier
             $keys = JWK::parseKeySet($jwks);
             $decoded = JWT::decode($idToken, $keys);
         } catch (Throwable $e) {
-            throw new InvalidArgumentException('Invalid Google ID token signature or format: ' . $e->getMessage(), 0, $e);
+            Log::warning('Google ID token verification failed: invalid signature or format.', [
+                'error' => $e->getMessage(),
+            ]);
+            throw new InvalidArgumentException('Invalid Google ID token.', 0, $e);
         }
 
         // Verify issuer
         $iss = (string) ($decoded->iss ?? '');
         if (!in_array($iss, self::VALID_ISSUERS, true)) {
-            throw new InvalidArgumentException("Invalid Google token issuer: '{$iss}'.");
+            Log::warning('Google ID token verification failed: invalid issuer.', [
+                'issuer' => $iss,
+            ]);
+            throw new InvalidArgumentException('Invalid Google ID token.');
         }
 
         // Verify audience
-        $aud = (string) ($decoded->aud ?? '');
         $allowedClientIds = $this->getAllowedClientIds();
+        if (empty($allowedClientIds)) {
+            Log::warning('Google ID token verification failed: no allowed Google client IDs configured.');
+            throw new InvalidArgumentException('Invalid Google ID token.');
+        }
 
-        if ($aud === '' || (!empty($allowedClientIds) && !in_array($aud, $allowedClientIds, true))) {
-            throw new InvalidArgumentException("Google ID token audience '{$aud}' is not authorized.");
+        $aud = (string) ($decoded->aud ?? '');
+        if ($aud === '' || !in_array($aud, $allowedClientIds, true)) {
+            Log::warning('Google ID token verification failed: audience is not authorized.', [
+                'aud' => $aud,
+            ]);
+            throw new InvalidArgumentException('Invalid Google ID token.');
         }
 
         // Verify expiration
         $exp = (int) ($decoded->exp ?? 0);
         if ($exp <= time()) {
+            Log::warning('Google ID token verification failed: token has expired.');
             throw new InvalidArgumentException('Google ID token has expired.');
         }
 
-        $email = (string) ($decoded->email ?? '');
+        // Verify subject
+        $sub = trim((string) ($decoded->sub ?? ''));
+        if ($sub === '') {
+            Log::warning('Google ID token verification failed: empty subject (sub) claim.');
+            throw new InvalidArgumentException('Invalid Google ID token.');
+        }
+
+        // Verify email
+        $email = trim((string) ($decoded->email ?? ''));
         if ($email === '') {
-            throw new InvalidArgumentException('Google ID token does not contain an email address.');
+            Log::warning('Google ID token verification failed: missing email claim.');
+            throw new InvalidArgumentException('Invalid Google ID token.');
         }
 
         $emailVerified = filter_var($decoded->email_verified ?? false, FILTER_VALIDATE_BOOLEAN);
 
         return [
-            'sub' => (string) ($decoded->sub ?? ''),
+            'sub' => $sub,
             'email' => $email,
             'email_verified' => $emailVerified,
             'name' => (string) ($decoded->name ?? ''),
@@ -83,14 +109,26 @@ class JwtGoogleIdTokenVerifier implements GoogleIdTokenVerifier
      * Get Google JWKS key set, caching for 1 hour.
      *
      * @return array<string, mixed>
+     *
+     * @throws GoogleServiceUnavailableException
      */
     private function getGoogleJwks(): array
     {
         return Cache::remember('google_openid_jwks', 3600, function (): array {
-            $response = Http::timeout(5)->get(self::GOOGLE_JWKS_URL);
+            try {
+                $response = Http::timeout(5)->get(self::GOOGLE_JWKS_URL);
+            } catch (Throwable $e) {
+                Log::warning('Failed to reach Google JWKS endpoint.', [
+                    'error' => $e->getMessage(),
+                ]);
+                throw new GoogleServiceUnavailableException('Google authentication service is currently unavailable.', 0, $e);
+            }
 
             if (!$response->successful()) {
-                throw new InvalidArgumentException('Unable to fetch Google public signing keys.');
+                Log::warning('Google JWKS endpoint returned non-successful status.', [
+                    'status' => $response->status(),
+                ]);
+                throw new GoogleServiceUnavailableException('Google authentication service is currently unavailable.');
             }
 
             /** @var array<string, mixed> */

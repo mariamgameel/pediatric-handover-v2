@@ -48,6 +48,14 @@ return Application::configure(basePath: dirname(__DIR__))
                 return ApiResponse::error('Unauthenticated.', 'unauthenticated', 401);
             }
 
+            if ($e instanceof \App\Exceptions\EmailChangeNotAllowedException) {
+                return ApiResponse::error(
+                    $e->getMessage(),
+                    'email_change_not_allowed',
+                    403
+                );
+            }
+
             if ($e instanceof AuthorizationException || $e instanceof AccessDeniedHttpException) {
                 return ApiResponse::error('This action is unauthorized.', 'forbidden', 403);
             }
@@ -76,7 +84,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 );
             }
 
-            $message = app()->isProduction() ? 'Internal server error.' : $e->getMessage();
+            report($e);
+
+            $message = config('app.debug') ? $e->getMessage() : 'Internal server error.';
 
             return ApiResponse::error($message, 'server_error', 500);
         });

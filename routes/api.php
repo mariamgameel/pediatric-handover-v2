@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -26,12 +27,16 @@ Route::prefix('v1')->group(function (): void {
             ->name('api.v1.auth.google');
     });
 
-    // Protected authentication routes
+    // Protected routes
     Route::middleware(['auth:sanctum', 'doctor.active'])->group(function (): void {
         Route::prefix('auth')->group(function (): void {
             Route::post('logout', [AuthController::class, 'logout'])->name('api.v1.auth.logout');
             Route::post('logout-all', [AuthController::class, 'logoutAll'])->name('api.v1.auth.logout-all');
             Route::get('me', [AuthController::class, 'me'])->name('api.v1.auth.me');
         });
+
+        Route::patch('profile', [ProfileController::class, 'update'])
+            ->middleware('throttle:api-profile')
+            ->name('api.v1.profile.update');
     });
 });

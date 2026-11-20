@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Http\Requests\UpdateProfileRequest;
+use App\Http\Requests\Api\Profile\UpdateProfileRequest;
 use App\Models\Doctor;
 use App\Services\ProfileService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,7 +23,7 @@ class ProfileServiceTest extends TestCase
         $this->service = new ProfileService();
     }
 
-    public function test_update_profile_updates_fields_successfully(): void
+    public function test_update_profile_partial_updates_only_present_fields(): void
     {
         $doctor = Doctor::factory()->create([
             'full_name' => 'Dr. Original Name',
@@ -31,20 +31,19 @@ class ProfileServiceTest extends TestCase
             'phone_number' => '+1111111111',
         ]);
 
+        // Partial update: only full_name
         $updated = $this->service->updateProfile($doctor, [
             'full_name' => 'Dr. Updated Name',
-            'email' => 'updated@hospital.local',
-            'phone_number' => '+2222222222',
         ]);
 
         $this->assertSame('Dr. Updated Name', $updated->full_name);
-        $this->assertSame('updated@hospital.local', $updated->email);
-        $this->assertSame('+2222222222', $updated->phone_number);
+        $this->assertSame('original@hospital.local', $updated->email);
+        $this->assertSame('+1111111111', $updated->phone_number);
 
         $doctor->refresh();
         $this->assertSame('Dr. Updated Name', $doctor->full_name);
-        $this->assertSame('updated@hospital.local', $doctor->email);
-        $this->assertSame('+2222222222', $doctor->phone_number);
+        $this->assertSame('original@hospital.local', $doctor->email);
+        $this->assertSame('+1111111111', $doctor->phone_number);
     }
 
     public function test_update_profile_allows_clearing_phone_number_to_null(): void
@@ -54,8 +53,6 @@ class ProfileServiceTest extends TestCase
         ]);
 
         $this->service->updateProfile($doctor, [
-            'full_name' => $doctor->full_name,
-            'email' => $doctor->email,
             'phone_number' => null,
         ]);
 
@@ -63,10 +60,27 @@ class ProfileServiceTest extends TestCase
         $this->assertNull($doctor->phone_number);
     }
 
-    public function test_update_profile_request_validates_required_fields_and_forbids_is_admin(): void
+    public function test_update_profile_email_change_with_valid_password(): void
+    {
+        $doctor = Doctor::factory()->create([
+            'email' => 'doc.initial@hospital.local',
+            'password' => 'Password123!',
+        ]);
+
+        $this->service->updateProfile($doctor, [
+            'email' => 'doc.new@hospital.local',
+            'current_password' => 'Password123!',
+        ]);
+
+        $doctor->refresh();
+        $this->assertSame('doc.new@hospital.local', $doctor->email);
+    }
+
+    public function test_update_profile_request_validation(): void
     {
         $doctor = Doctor::factory()->create([
             'email' => 'doc1@hospital.local',
+            'password' => 'Password123!',
         ]);
 
         $otherDoctor = Doctor::factory()->create([
@@ -77,7 +91,7 @@ class ProfileServiceTest extends TestCase
         $request->setUserResolver(fn () => $doctor);
         $rules = $request->rules();
 
-        // 1. Valid data with same email passes
+        // 1. Valid partial update with same email passes without current_password
         $validatorSameEmail = Validator::make([
             'full_name' => 'Dr. Updated',
             'email' => 'doc1@hospital.local',
@@ -87,19 +101,18 @@ class ProfileServiceTest extends TestCase
 
         // 2. Duplicate other doctor email fails
         $validatorDuplicate = Validator::make([
-            'full_name' => 'Dr. Updated',
             'email' => 'doc2@hospital.local',
+            'current_password' => 'Password123!',
         ], $rules);
         $this->assertTrue($validatorDuplicate->fails());
         $this->assertArrayHasKey('email', $validatorDuplicate->errors()->toArray());
 
-        // 3. Providing is_admin is prohibited
-        $validatorIsAdmin = Validator::make([
+        // 3. Prohibited fields fail
+        $validatorDisallowed = Validator::make([
             'full_name' => 'Dr. Updated',
-            'email' => 'doc1@hospital.local',
             'is_admin' => true,
         ], $rules);
-        $this->assertTrue($validatorIsAdmin->fails());
-        $this->assertArrayHasKey('is_admin', $validatorIsAdmin->errors()->toArray());
+        $this->assertTrue($validatorDisallowed->fails());
+        $this->assertArrayHasKey('is_admin', $validatorDisallowed->errors()->toArray());
     }
 }

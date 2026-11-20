@@ -19,6 +19,7 @@ class AdminSeeder extends Seeder
         'password',
         'admin',
         'admin123',
+        'adminsecret123',
         'secret',
         '123456',
         '12345678',
@@ -48,18 +49,25 @@ class AdminSeeder extends Seeder
             ? (string) config('hospital.admin_password')
             : (string) env('ADMIN_PASSWORD', '');
 
-        if (app()->isProduction()) {
+        $environment = app()->environment();
+        $isLocalOrTesting = app()->environment(['local', 'testing']);
+
+        if (!$isLocalOrTesting) {
             if ($password === '') {
-                throw new RuntimeException('Admin seeding failed: ADMIN_PASSWORD cannot be empty in production.');
+                throw new RuntimeException("Admin seeding failed: ADMIN_PASSWORD cannot be empty in {$environment} environment.");
             }
 
             if (in_array(strtolower($password), self::INSECURE_DEFAULT_PASSWORDS, true)) {
-                throw new RuntimeException('Admin seeding failed: ADMIN_PASSWORD cannot be a known default password in production.');
+                throw new RuntimeException("Admin seeding failed: ADMIN_PASSWORD cannot be a known default password in {$environment} environment.");
+            }
+
+            if (strlen($password) < 12) {
+                throw new RuntimeException("Admin seeding failed: ADMIN_PASSWORD must be at least 12 characters in {$environment} environment.");
             }
         }
 
-        // Use fallback password for non-production environments if unset
-        if ($password === '' && !app()->isProduction()) {
+        // Use fallback password for local and testing environments if unset
+        if ($password === '' && $isLocalOrTesting) {
             $password = 'password';
         }
 

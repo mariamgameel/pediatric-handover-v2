@@ -42,4 +42,15 @@ return [
     'admin_name' => env('ADMIN_NAME', 'Hospital Admin'),
     'admin_email' => env('ADMIN_EMAIL', 'admin@hospital.local'),
     'admin_password' => env('ADMIN_PASSWORD', ''),
+
+    /*
+    |--------------------------------------------------------------------------
+    | API Documentation Access Gate
+    |--------------------------------------------------------------------------
+    |
+    | Controls whether the Scramble interactive API docs and OpenAPI JSON
+    | spec routes are accessible. Defaults to false in all environments.
+    |
+    */
+    'api_docs_enabled' => filter_var(env('API_DOCS_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
 ];

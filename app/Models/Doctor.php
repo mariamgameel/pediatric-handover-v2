@@ -77,6 +77,10 @@ class Doctor extends Authenticatable
                 throw new InvalidArgumentException('doctor_id is immutable and cannot be updated.');
             }
         });
+
+        static::deleted(function (self $doctor): void {
+            $doctor->tokens()->delete();
+        });
     }
 
     /**
