@@ -43,9 +43,18 @@ class DoctorPolicy
 
     /**
      * Determine whether the doctor can restore the doctor.
+     * An admin cannot restore their own doctor account.
      */
     public function restore(Doctor $user, ?Doctor $doctor = null): bool
     {
-        return $user->isAdmin();
+        if (! $user->isAdmin()) {
+            return false;
+        }
+
+        if ($doctor !== null && $user->doctor_id === $doctor->doctor_id) {
+            return false;
+        }
+
+        return true;
     }
 }

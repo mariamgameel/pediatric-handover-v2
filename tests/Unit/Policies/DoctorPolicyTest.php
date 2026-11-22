@@ -48,5 +48,8 @@ class DoctorPolicyTest extends TestCase
 
         // Cannot delete self
         $this->assertFalse($this->policy->delete($admin, $admin));
+
+        // Cannot restore self
+        $this->assertFalse($this->policy->restore($admin, $admin));
     }
 }

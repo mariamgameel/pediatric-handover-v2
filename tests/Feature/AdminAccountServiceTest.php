@@ -96,9 +96,39 @@ class AdminAccountServiceTest extends TestCase
         $this->assertSame(1, $deletedResults->total());
         $this->assertSame('DOC-DELETED-02', $deletedResults->first()->doctor_id);
 
+        // Filter: deactivated (alias)
+        $deactivatedResults = $this->service->paginateDoctors(['status' => 'deactivated']);
+        $this->assertSame(1, $deactivatedResults->total());
+        $this->assertSame('DOC-DELETED-02', $deactivatedResults->first()->doctor_id);
+
         // Filter: all
         $allResults = $this->service->paginateDoctors(['status' => 'all']);
         $this->assertSame(2, $allResults->total());
+    }
+
+    public function test_paginate_doctors_accepts_custom_per_page_and_filter(): void
+    {
+        Doctor::factory()->count(15)->create();
+
+        $byParam = $this->service->paginateDoctors([], 10);
+        $this->assertSame(10, $byParam->perPage());
+        $this->assertCount(10, $byParam->items());
+
+        $byFilter = $this->service->paginateDoctors(['per_page' => 5]);
+        $this->assertSame(5, $byFilter->perPage());
+        $this->assertCount(5, $byFilter->items());
+    }
+
+    public function test_paginate_doctors_uses_doctor_id_as_deterministic_tiebreaker(): void
+    {
+        Doctor::factory()->create(['doctor_id' => 'DOC-B', 'full_name' => 'Identical Name']);
+        Doctor::factory()->create(['doctor_id' => 'DOC-A', 'full_name' => 'Identical Name']);
+
+        $page1 = $this->service->paginateDoctors(['per_page' => 1, 'page' => 1]);
+        $this->assertSame('DOC-A', $page1->first()->doctor_id);
+
+        $page2 = $this->service->paginateDoctors(['per_page' => 1, 'page' => 2]);
+        $this->assertSame('DOC-B', $page2->first()->doctor_id);
     }
 
     public function test_get_doctor_resolves_active_and_soft_deleted_doctor(): void

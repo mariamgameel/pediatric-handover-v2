@@ -61,6 +61,9 @@ class ApiDocumentationTest extends TestCase
         $this->assertArrayHasKey('/patients/{patient_id}', $data['paths']);
         $this->assertArrayHasKey('/admin/patients', $data['paths']);
         $this->assertArrayHasKey('/admin/patients/{patient_id}', $data['paths']);
+        $this->assertArrayHasKey('/admin/doctors', $data['paths']);
+        $this->assertArrayHasKey('/admin/doctors/{doctor_id}', $data['paths']);
+        $this->assertArrayHasKey('/admin/doctors/{doctor_id}/restore', $data['paths']);
 
         $profilePatch = $data['paths']['/profile']['patch'];
         $this->assertArrayHasKey('responses', $profilePatch);

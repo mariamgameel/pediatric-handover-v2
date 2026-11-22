@@ -16,12 +16,12 @@ class AdminAccountService
      * @param array<string, mixed> $filters
      * @return LengthAwarePaginator<Doctor>
      */
-    public function paginateDoctors(array $filters): LengthAwarePaginator
+    public function paginateDoctors(array $filters, int $perPage = 20): LengthAwarePaginator
     {
         $status = (string) ($filters['status'] ?? 'active');
 
         $query = match ($status) {
-            'deleted' => Doctor::onlyTrashed(),
+            'deleted', 'deactivated' => Doctor::onlyTrashed(),
             'all' => Doctor::withTrashed(),
             default => Doctor::query(),
         };
@@ -46,9 +46,15 @@ class AdminAccountService
             }
         }
 
-        $query->orderBy('full_name', 'asc');
+        $direction = strtolower((string) ($filters['direction'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+        $query->orderBy('full_name', $direction)->orderBy('doctor_id', 'asc');
 
-        return $query->paginate(20)->withQueryString();
+        $query->withCount('clinicalUpdates');
+
+        $limit = isset($filters['per_page']) ? (int) $filters['per_page'] : $perPage;
+        $page = isset($filters['page']) ? (int) $filters['page'] : null;
+
+        return $query->paginate($limit, ['*'], 'page', $page)->withQueryString();
     }
 
     /**
@@ -56,7 +62,10 @@ class AdminAccountService
      */
     public function getDoctor(string $doctorId): Doctor
     {
-        return Doctor::withTrashed()->where('doctor_id', $doctorId)->firstOrFail();
+        return Doctor::withTrashed()
+            ->withCount('clinicalUpdates')
+            ->where('doctor_id', $doctorId)
+            ->firstOrFail();
     }
 
     /**
