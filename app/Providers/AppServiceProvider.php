@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Contracts\GoogleIdTokenVerifier;
+use App\Models\ClinicalUpdate;
 use App\Models\Doctor;
 use App\Models\Patient;
+use App\Policies\ClinicalUpdatePolicy;
 use App\Policies\DoctorPolicy;
 use App\Policies\PatientPolicy;
 use App\Services\Google\JwtGoogleIdTokenVerifier;
@@ -36,6 +38,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::policy(Patient::class, PatientPolicy::class);
         Gate::policy(Doctor::class, DoctorPolicy::class);
+        Gate::policy(ClinicalUpdate::class, ClinicalUpdatePolicy::class);
 
         Gate::define('viewApiDocs', function (?Doctor $user = null): bool {
             return (bool) config('hospital.api_docs_enabled', false);
@@ -74,6 +77,11 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('api-admin-write', function (Request $request) {
+            $doctorId = (string) ($request->user()?->doctor_id ?: $request->ip());
+            return Limit::perMinute(30)->by($doctorId);
+        });
+
+        RateLimiter::for('api-updates-create', function (Request $request) {
             $doctorId = (string) ($request->user()?->doctor_id ?: $request->ip());
             return Limit::perMinute(30)->by($doctorId);
         });

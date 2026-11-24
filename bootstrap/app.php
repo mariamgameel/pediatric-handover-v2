@@ -64,6 +64,14 @@ return Application::configure(basePath: dirname(__DIR__))
                 );
             }
 
+            if ($e instanceof \App\Exceptions\IdempotencyKeyConflictException) {
+                return ApiResponse::error(
+                    $e->getMessage(),
+                    'idempotency_key_conflict',
+                    409
+                );
+            }
+
             if ($e instanceof AuthorizationException || $e instanceof AccessDeniedHttpException) {
                 return ApiResponse::error('This action is unauthorized.', 'forbidden', 403);
             }

@@ -117,3 +117,15 @@ The OpenAPI JSON specification is accessible at:
 ```
 http://127.0.0.1:8000/docs/api.json
 ```
+
+---
+
+## Clinical Updates are Immutable
+
+Clinical updates within the Pediatric Handover System represent permanent, authoritative medical records and are strictly append-only. No doctor or administrator may alter or delete existing updates. Mistakes or revisions must be recorded by creating a new correction update referencing the original (`corrects_update_id`).
+
+Immutability is enforced across multiple layers of defense:
+1. **Model Guard**: The Eloquent `ClinicalUpdate` model registers a `deleting` event listener that unconditionally throws a `LogicException` ('Clinical updates are retained permanently and cannot be deleted.').
+2. **Route Guard**: The routing layer registers only `POST` (create), `GET` (index), and `GET` (show) endpoints. Automated route guards verify that no route exists allowing `PUT`, `PATCH`, or `DELETE` on clinical updates.
+3. **Database-Level Triggers**: Database migrations create `BEFORE UPDATE` and `BEFORE DELETE` triggers in MySQL/MariaDB raising `SQLSTATE '45000'` with the message `'Clinical updates are immutable'`.
+4. **Least-Privilege Database Recommendation**: For production deployments, it is strongly recommended to configure the application's MySQL database user with `SELECT`, `INSERT`, and limited schema privileges, explicitly withholding `UPDATE` and `DELETE` grants on the `clinical_updates` table.

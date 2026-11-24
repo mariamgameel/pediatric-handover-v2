@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\V1\Admin\DoctorController as AdminDoctorController;
 use App\Http\Controllers\Api\V1\Admin\PatientController as AdminPatientController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\ClinicalUpdateController;
 use App\Http\Controllers\Api\V1\PatientController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -53,6 +54,24 @@ Route::prefix('v1')->group(function (): void {
                 ->where('patient_id', $patientIdPattern)
                 ->name('api.v1.patients.show');
         });
+
+        $ulidPattern = '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}';
+
+        // Clinical Updates routes
+        Route::post('patients/{patient_id}/updates', [ClinicalUpdateController::class, 'store'])
+            ->where('patient_id', $patientIdPattern)
+            ->middleware('throttle:api-updates-create')
+            ->name('api.v1.patients.updates.store');
+
+        Route::get('patients/{patient_id}/updates', [ClinicalUpdateController::class, 'index'])
+            ->where('patient_id', $patientIdPattern)
+            ->middleware('throttle:api-patients-read')
+            ->name('api.v1.patients.updates.index');
+
+        Route::get('updates/{update_id}', [ClinicalUpdateController::class, 'show'])
+            ->where('update_id', $ulidPattern)
+            ->middleware('throttle:api-patients-read')
+            ->name('api.v1.updates.show');
 
         // Admin routes
         Route::middleware('admin')->prefix('admin')->group(function () use ($patientIdPattern, $doctorIdPattern): void {

@@ -662,6 +662,35 @@ class PatientApiTest extends TestCase
         $this->assertDatabaseHas('patients', ['patient_id' => 'PAT-HAS-UPDATES']);
     }
 
+    public function test_delete_patient_with_real_api_created_clinical_update_returns_409(): void
+    {
+        $patient = Patient::factory()->create(['patient_id' => 'PAT-API-UPDATES']);
+
+        // Create a real update through the API
+        $createResponse = $this->withHeader('Authorization', 'Bearer ' . $this->doctorToken)
+            ->postJson('/api/v1/patients/PAT-API-UPDATES/updates', [
+                'content' => 'API-created clinical update before patient deletion attempt.',
+            ]);
+        $createResponse->assertStatus(201);
+
+        $this->app['auth']->forgetGuards();
+
+        // Attempt deletion by admin
+        $deleteResponse = $this->withHeader('Authorization', 'Bearer ' . $this->adminToken)
+            ->deleteJson('/api/v1/admin/patients/PAT-API-UPDATES');
+
+        $deleteResponse->assertStatus(409);
+        $deleteResponse->assertJson([
+            'success' => false,
+            'error' => [
+                'code' => 'patient_has_clinical_updates',
+            ],
+        ]);
+
+        // Patient still exists in database
+        $this->assertDatabaseHas('patients', ['patient_id' => 'PAT-API-UPDATES']);
+    }
+
     public function test_delete_with_unknown_id_returns_404(): void
     {
         $response = $this->withHeader('Authorization', 'Bearer ' . $this->adminToken)
